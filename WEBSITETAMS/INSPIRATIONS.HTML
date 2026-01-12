@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>THE AAMIR SHEIKH</title>
+  <link rel="stylesheet" href="style.css">
+  
+</head>
+
+<body>
+
+  <header>
+        <h1>THE AAMIR SHEIKH</h1>
+        <nav>
+            <a href="INDEX.HTML">Home</a> |
+              <a href="PURPOSE.HTML">Purpose</a> |
+            <a href="SERVICES.HTML">Services</a> |
+            <a href="PROJECTS.HTML">Projects</a> |
+            <a href="S-KILLS.HTML">S-kills</a> |
+            <a href="STRUGGLES.HTML">Struggles</a> |
+            <a href="INSPIRATIONS.html">Inspirations</a>
+
+        </nav>
+    </header>
+
+<section class="inspiration-section">
+  <h2>Inspirations</h2>
+
+  <div class="inspiration-item">
+    <div class="text">
+      <h3>The Boy,The Mole,The Fox & The Horse</h3>
+      <p>Inspired by people who show up daily and build quietly.
+        <br> CHARLIE MACKESY 
+      </p>
+    </div>
+
+    <div class="images">
+      <img src="images/CharlieMackesy_BMFH_ThePlay_Backdrop1.jpg">
+      <img src="images/CharlieMackesy_BMFH_ThePlay_Backdrop2.jpg">
+      <img src="images/CharlieMackesy_BMFH_ThePlay_Backdrop3.jpg">
+    </div>
+  </div>
+
+  <div class="inspiration-item">
+    <div class="text">
+      <h3>Timothée Chalamet</h3>
+     <strike>
+     Less noise, more meaning.
+    </strike>
+    <P style="color:rgb(248, 174, 3);text-align:center"> MORE NOISE, MORE MEANING</P>
+    </div>
+
+  <div class="images">
+ 
+
+  <div class="image-box video-box">
+  <video muted playsinline preload="metadata">
+    <source src="videos/video_20260113_001425_edit.mp4" type="video/mp4">
+  </video>
+</div>
+ <div class="image-box">
+    <img src="images/Timothee-Chalamet-Laptop-Wallpaper.jpg">
+  </div>
+
+</div>
+
+
+    
+  </div>
+ 
+    <h1>FEEL THE SILENCE</h1>
+  </div>
+
+</div>
+
+</section>
+
+<footer>
+  © 2026 | AMS | content: ak4418561@gmail.com
+</footer>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll('.video-box video').forEach(video => {
+    const box = video.parentElement;
+
+    // Hover → play muted
+    box.addEventListener('mouseenter', () => {
+      video.muted = true;
+      video.play();
+    });
+
+    // Leave → stop & reset
+    box.addEventListener('mouseleave', () => {
+      video.pause();
+      video.currentTime = 0;
+    });
+
+    // Click → unmute + play
+    box.addEventListener('click', () => {
+      video.muted = false;
+      video.play();
+    });
+  });
+});
+</script>
+
+
+
+
+</body>
+</html>
