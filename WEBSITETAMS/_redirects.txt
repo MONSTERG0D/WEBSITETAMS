@@ -1,1 +1,1 @@
-http://theaamirsheikh.com/* https://theaamirsheikh.com/:splat 301!
+https://www.theaamirsheikh.com/* https://theaamirsheikh.com/:splat 301!
