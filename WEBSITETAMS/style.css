@@ -38,6 +38,9 @@ header {
   backdrop-filter: blur(5px);
   border-bottom: 1px solid var(--border);
 }
+header h1 {
+    text-align: center;
+}
 
 nav {
   max-width: 1100px;
