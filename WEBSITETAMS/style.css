@@ -240,6 +240,28 @@ body {
   z-index: 1;
 }
 
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    width: 90%;
+    margin: 40px auto;
+}
+
+.video-box {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.video-box video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 
 
 @media (max-width: 768px) {
@@ -255,5 +277,10 @@ body {
   main {
     padding: 60px 20px;
   }
+}
+@media (max-width: 900px) {
+    .video-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
