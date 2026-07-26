@@ -39,11 +39,11 @@
 
 
         <br>
-                <video width="320" height="240" controls>
-  <source src="video_20260113_001425_edit.mp4" type="video/mp4">
-  <source src="video_20260113_001425_edit.ogg" type="video/ogg">
-  Your browser does not support the video tag.
-</video>
+                <div class="image-box video-box">
+                        <video muted playsinline preload="metadata"> 
+                                <source src="videos/video_20260113_001425_edit.mp4" type="video/mp4"> 
+                        </video> 
+                </div>
         
 
         
@@ -57,6 +57,32 @@
     <footer>
         <p>© 2026 | AMS  | content: ak4418561@gmail.com</p>
     </footer>
+        <script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll('.video-box video').forEach(video => {
+    const box = video.parentElement;
+
+    // Hover → play muted
+    box.addEventListener('mouseenter', () => {
+      video.muted = true;
+      video.play();
+    });
+
+    // Leave → stop & reset
+    box.addEventListener('mouseleave', () => {
+      video.pause();
+      video.currentTime = 0;
+    });
+
+    // Click → unmute + play
+    box.addEventListener('click', () => {
+      video.muted = false;
+      video.play();
+    });
+  });
+});
+</script>
+
 
 </body>
 </html>
