@@ -70,7 +70,7 @@ nav a::after {
 nav a:hover::after {
   width: 100%;
 }
-.vidio-editing.html{
+.VIDEO-EDITING{
     position:relative;
     overflow:hidden;
     border-radius:24px;
@@ -95,12 +95,12 @@ nav a:hover::after {
     opacity:0;
 }
 
-.vidio-editing.html:hover .preview{
+.VIDEO-EDITING:hover .preview{
 
     opacity:1;
 }
 
-.vidio-editing.html:hover .thumbnail{
+.VIDEO-EDITING:hover .thumbnail{
 
     opacity:0;
 }
