@@ -18,9 +18,6 @@
 html {
   scroll-behavior: smooth;
 }
-title {
-  text-align: center;
-}
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -32,6 +29,7 @@ body {
 
 
 header {
+  text-align: center;
   position: sticky;
   top: 0;
   z-index: 10;
