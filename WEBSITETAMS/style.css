@@ -70,7 +70,7 @@ nav a::after {
 nav a:hover::after {
   width: 100%;
 }
-.project-card{
+.vidio-editing.html{
     position:relative;
     overflow:hidden;
     border-radius:24px;
@@ -95,12 +95,12 @@ nav a:hover::after {
     opacity:0;
 }
 
-.project-card:hover .preview{
+.vidio-editing.html:hover .preview{
 
     opacity:1;
 }
 
-.project-card:hover .thumbnail{
+.vidio-editing.html:hover .thumbnail{
 
     opacity:0;
 }
