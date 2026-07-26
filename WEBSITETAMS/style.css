@@ -30,9 +30,6 @@ body {
 
 header {
 
-  display: flex;
-  justify-content: center;
-  text-align: center;
 
   position: sticky;
   top: 0;
