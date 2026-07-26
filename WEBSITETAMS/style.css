@@ -282,17 +282,17 @@ body {
     padding: 60px 20px;
   }
 }
-cards.forEach(card=>{
+cards.forEach(EDITING=>{
 
-    const video=card.querySelector("video");
+    const video=EDITING.querySelector("video");
 
-    card.addEventListener("mouseenter",()=>{
+    EDITING.addEventListener("mouseenter",()=>{
 
         video.play();
 
     });
 
-    card.addEventListener("mouseleave",()=>{
+    EDITING.addEventListener("mouseleave",()=>{
 
         video.pause();
         video.currentTime=0;
