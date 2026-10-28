@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 760" role="img" aria-label="Original illustration: a cheerful chubby girl in an oversized terracotta hoodie and beanie, holding a vintage camera">
+  <title>Village — original character, THE AAMIR SHEIKH</title>
+  <defs>
+    <style>.o{stroke:#2b2a26;stroke-width:4;stroke-linejoin:round;stroke-linecap:round}.t{stroke:#2b2a26;stroke-width:2.6;stroke-linecap:round;fill:none}</style>
+    <pattern id="ht2" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.4" fill="#2b2a26" opacity=".3"/></pattern>
+  </defs>
+
+  <!-- back hair: long wavy -->
+  <path class="o" fill="#3b2a22" d="M112 120 Q106 50 182 46 Q258 50 252 122 Q262 170 246 214 Q252 236 232 246 L132 246 Q112 236 118 214 Q102 170 112 120 Z"/>
+
+  <!-- neck -->
+  <path class="o" fill="#c98a62" d="M164 186 L164 214 Q180 224 196 214 L196 186 Z"/>
+
+  <!-- round face -->
+  <path class="o" fill="#dfa47c" d="M128 124 Q128 70 180 68 Q232 70 232 124 Q234 172 206 190 Q180 204 154 190 Q126 172 128 124 Z"/>
+  <ellipse cx="150" cy="156" rx="13" ry="7" fill="#e0675a" opacity=".45"/>
+  <ellipse cx="210" cy="156" rx="13" ry="7" fill="#e0675a" opacity=".45"/>
+  <!-- happy closed eyes -->
+  <path class="t" d="M146 138 Q158 128 170 138" stroke-width="3.5"/>
+  <path class="t" d="M190 138 Q202 128 214 138" stroke-width="3.5"/>
+  <path d="M148 118 L168 114 M192 114 L212 118" stroke="#2b2a26" stroke-width="3.5" stroke-linecap="round"/>
+  <path class="t" d="M180 146 Q176 156 182 158"/>
+  <path class="o" fill="#7a2f2a" d="M166 168 Q180 182 196 168 Z" stroke-width="3"/>
+  <path d="M172 172 Q180 178 190 172" stroke="#e98b8b" stroke-width="3" fill="none"/>
+  <!-- freckles -->
+  <g fill="#8a5a3c"><circle cx="152" cy="148" r="1.5"/><circle cx="158" cy="152" r="1.5"/><circle cx="146" cy="152" r="1.5"/><circle cx="208" cy="148" r="1.5"/><circle cx="214" cy="152" r="1.5"/><circle cx="202" cy="152" r="1.5"/></g>
+
+  <!-- fringe -->
+  <path class="o" fill="#3b2a22" d="M126 126 Q124 76 180 74 Q236 76 234 126 Q214 96 192 104 Q176 88 160 104 Q140 98 126 126 Z"/>
+  <!-- beanie -->
+  <path class="o" fill="#e3a83b" d="M120 106 Q118 34 180 30 Q242 34 240 106 Z"/>
+  <path class="o" fill="#c98d24" d="M114 96 L246 96 L246 118 L114 118 Z"/>
+  <path d="M132 100 L132 116 M148 100 L148 116 M164 100 L164 116 M180 100 L180 116 M196 100 L196 116 M212 100 L212 116 M228 100 L228 116" stroke="#2b2a26" stroke-width="2" opacity=".5"/>
+  <circle class="o" cx="180" cy="26" r="16" fill="#efe6d2"/>
+
+  <!-- oversized hoodie, round body -->
+  <path class="o" fill="#c8643b" d="M118 236 Q130 206 166 204 Q180 216 194 204 Q232 206 244 236 Q272 300 262 380 Q254 420 220 428 L140 428 Q106 420 98 380 Q88 300 118 236 Z"/>
+  <!-- hood folds + strings -->
+  <path class="o" fill="#a84c26" d="M146 206 Q180 236 214 206 Q206 226 180 232 Q154 226 146 206 Z"/>
+  <path d="M168 230 L164 280 M192 230 L196 280" stroke="#efe6d2" stroke-width="4" stroke-linecap="round"/>
+  <!-- shading -->
+  <path d="M100 300 Q96 360 110 404 Q130 420 140 420 Q118 360 124 280 Z" fill="url(#ht2)"/>
+  <!-- headphones around neck -->
+  <path class="o" fill="none" d="M138 214 Q180 252 222 214" stroke-width="7" stroke="#2b2a26"/>
+  <rect class="o" x="124" y="204" width="24" height="30" rx="10" fill="#5b7b4a"/>
+  <rect class="o" x="212" y="204" width="24" height="30" rx="10" fill="#5b7b4a"/>
+  <!-- kangaroo pocket -->
+  <path class="o" fill="#b65832" d="M134 360 L226 360 L238 410 L122 410 Z"/>
+
+  <!-- arms in sleeves holding camera -->
+  <path class="o" fill="#c8643b" d="M118 240 Q92 280 100 330 Q110 352 146 346 L150 322 Q126 318 126 300 Q128 270 140 252 Z"/>
+  <path class="o" fill="#c8643b" d="M242 240 Q268 280 260 330 Q250 352 214 346 L210 322 Q234 318 234 300 Q232 270 220 252 Z"/>
+  <path d="M104 318 Q116 332 140 330 M256 318 Q244 332 220 330" stroke="#a84c26" stroke-width="4" fill="none"/>
+  <!-- camera -->
+  <rect class="o" x="132" y="300" width="96" height="62" rx="8" fill="#2b2a26"/>
+  <rect x="132" y="312" width="96" height="10" fill="#4a463f"/>
+  <rect class="o" x="146" y="292" width="22" height="12" rx="2" fill="#2b2a26"/>
+  <circle class="o" cx="186" cy="334" r="22" fill="#4a463f"/>
+  <circle cx="186" cy="334" r="13" fill="#1a1916"/>
+  <circle cx="181" cy="329" r="4" fill="#a7c4c2"/>
+  <rect x="210" y="306" width="10" height="6" rx="1" fill="#e3a83b"/>
+  <!-- hands -->
+  <path class="o" fill="#dfa47c" d="M124 318 Q138 308 148 318 L148 344 Q134 352 124 342 Z"/>
+  <path class="o" fill="#dfa47c" d="M236 318 Q222 308 212 318 L212 344 Q226 352 236 342 Z"/>
+
+  <!-- wide trousers -->
+  <path class="o" fill="#5b7b4a" d="M130 424 L180 424 L176 470 L172 640 L108 640 Q106 520 130 424 Z"/>
+  <path class="o" fill="#5b7b4a" d="M180 424 L230 424 Q254 520 252 640 L188 640 L184 470 Z"/>
+  <path d="M142 440 Q126 540 126 636 L140 636 Q138 540 152 440 Z" fill="url(#ht2)"/>
+  <path d="M180 430 L180 470" stroke="#2b2a26" stroke-width="3"/>
+  <path class="o" fill="#4a6a3a" d="M108 618 L172 618 L172 642 L108 642 Z M188 618 L252 618 L252 642 L188 642 Z"/>
+
+  <!-- chunky sneakers -->
+  <path class="o" fill="#efe6d2" d="M108 640 L172 640 L176 690 Q178 712 160 714 L96 714 Q88 694 104 682 Z"/>
+  <path class="o" fill="#efe6d2" d="M188 640 L252 640 L256 682 Q272 694 264 714 L200 714 Q182 712 184 690 Z"/>
+  <path d="M94 704 L176 704 M184 704 L266 704" stroke="#c8643b" stroke-width="7"/>
+  <path d="M130 660 L158 666 M130 674 L158 680 M202 666 L230 660 M202 680 L230 674" stroke="#2b2a26" stroke-width="2.5"/>
+
+  <ellipse cx="180" cy="728" rx="104" ry="9" fill="#2b2a26" opacity=".18"/>
+</svg>

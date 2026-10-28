@@ -1,5 +1,16 @@
 /assets/media/*
   Cache-Control: public, max-age=2592000
+/assets/media/money-follows/*.m3u8
+  Content-Type: application/vnd.apple.mpegurl
+  Cache-Control: public, max-age=3600
+/assets/media/money-follows/*/*.m3u8
+  Content-Type: application/vnd.apple.mpegurl
+  Cache-Control: public, max-age=3600
+/assets/media/money-follows/*/*.ts
+  Content-Type: video/mp2t
+  Cache-Control: public, max-age=2592000
+/assets/audio/*
+  Cache-Control: public, max-age=2592000
 /assets/img/*
   Cache-Control: public, max-age=2592000
 /assets/css/*

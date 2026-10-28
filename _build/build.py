@@ -1,97 +1,90 @@
 #!/usr/bin/env python3
-"""Static page builder for theaamirsheikh.com (v2: light/dark, wolves, Blender).
+"""Static page builder for theaamirsheikh.com — v3 ("three interfaces").
+
 Edit the content below, run `python3 _build/build.py` from the site root,
-and every .html file is regenerated. (You can also edit the .html directly.)
+and every .html file is regenerated. Plain HTML/CSS/JS, no framework.
+
+v3: THE AAMIR SHEIKH branding · 3 interfaces (Riot / Noir / Village) each with
+its own music · accessibility panel · order + feedback forms (WhatsApp + Gmail)
+· original-quality video (HLS for Money Follows) · less text, more icons.
 """
-import os, html, re
+import os, html, re, json
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE = "https://theaamirsheikh.com"
+BRAND = "THE AAMIR SHEIKH"
 EMAIL = "ak4418561@gmail.com"
+WHATSAPP = "918082285886"          # +91 80822 85886 (wa.me format, no +)
 GITHUB = "https://github.com/MONSTERG0D"
-# Only the serif is downloaded (async, never blocks rendering). Sans + mono use the device's own fonts.
-FONTS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
-
-CHAPTERS = [
-    # file, nav label, roman, title, one-liner
-    ("purpose.html", "Story", "I", "Story", "Who I am and why this site exists."),
-    ("struggles.html", "Struggles", "II", "Struggles", "The part of the run that usually gets cut."),
-    ("skills.html", "Skills", "III", "Skills", "The tools I carry and how far along each one is."),
-    ("projects.html", "Work", "IV", "Work", "Motion, 3D, games, robots and software — the missions log."),
-    ("inspirations.html", "Inspirations", "V", "Inspirations", "Wolves, games, films and anime that left a mark."),
-    ("services.html", "Services", "VI", "Services", "Side quests: what I can make for you."),
-]
-NAV_ORDER = ["projects.html", "purpose.html", "struggles.html", "skills.html", "inspirations.html", "services.html"]
+FONTS = ("https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600"
+         "&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap")
 
 def esc(s): return html.escape(s, quote=True)
+
+# ---------------------------------------------------------------- icons (Lucide, ISC licence — see _build/icons/LICENSE-lucide.txt)
+_ICONS = {}
+def ico(name, cls=""):
+    if name not in _ICONS:
+        raw = open(os.path.join(ROOT, "_build", "icons", f"{name}.svg"), encoding="utf-8").read()
+        raw = re.sub(r"\s+", " ", raw).strip()
+        raw = re.sub(r'\s(width|height)="24"', "", raw)
+        _ICONS[name] = raw.replace("<svg ", '<svg class="i ICLS" aria-hidden="true" focusable="false" ', 1)
+    return _ICONS[name].replace("ICLS", cls)
+
+# ---------------------------------------------------------------- chapters / nav
+CHAPTERS = [
+    # file, nav label, roman, title, one-liner, icon
+    ("purpose.html", "Story", "I", "Story", "Who I am and why this exists.", "flame"),
+    ("struggles.html", "Struggles", "II", "Struggles", "The part of the run that usually gets cut.", "mountain"),
+    ("skills.html", "Skills", "III", "Skills", "The tools I carry.", "layers"),
+    ("projects.html", "Work", "IV", "Work", "Motion, 3D, games, robots, software.", "clapperboard"),
+    ("inspirations.html", "Inspirations", "V", "Inspirations", "Wolves, games, films and anime.", "heart"),
+    ("services.html", "Services", "VI", "Services", "What I can make for you.", "sparkles"),
+    ("order.html", "Order", "VII", "Order & Feedback", "Pick what you want. I get it on WhatsApp.", "shopping-bag"),
+]
+NAV_ORDER = ["projects.html", "purpose.html", "skills.html", "inspirations.html", "services.html", "order.html"]
 
 # ---------------------------------------------------------------- media
 M = "assets/media/"
 B = "assets/img/blender/"
+I = "assets/img/insp/"
+# slug, title, kind, label, orientation (v = vertical 9:16, h = 16:9 wide, t = 16:9 third), hls?
 CLIPS = [
-    # slug, title, kind, year/label, layout (v = vertical, h = half, t = third)
-    ("money-follows", "Money Follows", "Vertical ad edit · 4K source", "2026", "v"),
-    ("liquid-death", "Liquid Death — spec spot", "Motion graphics · spec ad", "2026", "v"),
-    ("meant-to-be-felt", "Text Isn’t Just Text", "Kinetic typography", "2026", "h"),
-    ("design-is-a-game", "Design Is Like a Game", "Kinetic typography", "2026", "t"),
-    ("create-blue", "Create Something New", "Title design", "2026", "t"),
-    ("chalamet-edit", "Chalamet — Fan Edit", "Edit · colour · rhythm", "2026", "t"),
+    ("money-follows", "Money Follows", "Vertical ad · 4K original", "2026", "v", True),
+    ("liquid-death", "Liquid Death — spec", "Motion graphics · ad", "2026", "v", False),
+    ("meant-to-be-felt", "Text Isn’t Just Text", "Kinetic type", "2026", "h", False),
+    ("design-is-a-game", "Design Is Like a Game", "Kinetic type", "2026", "t", False),
+    ("create-blue", "Create Something New", "Title design", "2026", "t", False),
+    ("chalamet-edit", "Chalamet — Fan Edit", "Edit · rhythm", "2026", "t", False),
 ]
 CLIPS2 = [
-    ("drift-grade", "Drift — Colour Grade", "Colour grading · footage © 19Bozzy92", "Grade", "h"),
-    ("blind-justice", "Blind Justice", "3D motion graphics", "3D", "h"),
-    ("drift-tracking", "Drift in the Rain — Tracking", "Motion tracking · footage © 19Bozzy92", "Track", "t"),
-    ("coca-cola-doc", "Coca-Cola — How They Sell", "Documentary-style explainer · spec", "Doc", "t"),
-    ("physics-robotics", "Physics × Robotics", "Motion graphics · glass UI", "Motion", "t"),
-    ("lego-engineering", "LEGO — Engineering Passion", "Motion graphics · spec", "Motion", "t"),
-    ("this-is-my", "This Is My…", "Text motion", "Type", "t"),
-    ("ink-reveal", "Ink Reveal", "Animated render", "Render", "t"),
+    ("drift-grade", "Drift — Colour Grade", "Grade · footage © 19Bozzy92", "Grade", "h", False),
+    ("blind-justice", "Blind Justice", "3D motion", "3D", "h", False),
+    ("drift-tracking", "Drift in the Rain", "Tracking · footage © 19Bozzy92", "Track", "t", False),
+    ("coca-cola-doc", "Coca-Cola — How They Sell", "Doc explainer · spec", "Doc", "t", False),
+    ("physics-robotics", "Physics × Robotics", "Glass UI motion", "Motion", "t", False),
+    ("lego-engineering", "LEGO — Engineering", "Motion · spec", "Motion", "t", False),
+    ("this-is-my", "This Is My…", "Text motion", "Type", "t", False),
+    ("ink-reveal", "Ink Reveal", "Animated render", "Render", "t", False),
 ]
 CLIP = {c[0]: c for c in CLIPS + CLIPS2}
+HLS = {"money-follows": M + "money-follows/master.m3u8"}
+
 BLENDER = [
-    # file, caption, alt
-    ("blender-2.webp", "Close-up · warm key light", "Blender render: a pink-iced donut with sprinkles on a plate beside a ceramic mug, close-up in warm light"),
-    ("blender-5.webp", "Walnut table · wood shading", "Blender render: a walnut coffee table with tapered legs on a light wooden floor"),
-    ("blender-1.webp", "Wide · a beam of sun", "Blender render: donut and mug on a dark concrete floor crossed by a beam of sunlight"),
+    ("blender-2.webp", "Close-up · warm key", "Blender render: a pink-iced donut with sprinkles beside a ceramic mug in warm light"),
+    ("blender-5.webp", "Walnut table", "Blender render: a walnut coffee table with tapered legs on a light wooden floor"),
+    ("blender-1.webp", "A beam of sun", "Blender render: donut and mug on a dark concrete floor crossed by a beam of sunlight"),
     ("blender-3.webp", "Depth of field", "Blender render: donut, spoon and mug with shallow depth of field"),
     ("blender-4.webp", "Top-down · cool fill", "Blender render: top-down view of the donut and mug with blue shadows"),
 ]
 
-# ---------------------------------------------------------------- the wolf (original icon, see _build/wolf_shape.py + wolf_gen.py)
-import json as _json, sys as _sys
-_sys.path.insert(0, os.path.join(ROOT, "_build"))
-from wolf_shape import FAR as WOLF_FAR, DETAIL as WOLF_DETAIL, EYE as WOLF_EYE, smooth_path as _smooth
-WOLF = _json.load(open(os.path.join(ROOT, "_build", "wolf.json")))
-_wolf_n = [0]
+def play_attrs(slug, p=""):
+    c = CLIP[slug]
+    a = f'data-play="{p}{M}{slug}.mp4" data-title="{esc(c[1])}" data-poster="{p}{M}{slug}.webp" data-ori="{"v" if c[4] == "v" else "h"}"'
+    if slug in HLS: a += f' data-hls="{p}{HLS[slug]}"'
+    return a
 
-def wolf_svg(label="A wolf howling at the moon"):
-    import math
-    _wolf_n[0] += 1; n = _wolf_n[0]
-    arcs = ""
-    cx, cy = 70, 26
-    for r in (16, 28, 40):
-        a1, a2 = math.radians(196), math.radians(262)
-        arcs += f'<path d="M{cx + r*math.cos(a1):.1f} {cy + r*math.sin(a1):.1f} A{r} {r} 0 0 1 {cx + r*math.cos(a2):.1f} {cy + r*math.sin(a2):.1f}"/>'
-    stars = "".join(f'<circle style="--d:{i*0.7:.1f}s" cx="{x}" cy="{y}" r="{r}"/>' for i, (x, y, r) in enumerate([(120,-30,1.6),(200,10,1.4),(260,40,1.8),(330,-10,1.3),(380,70,1.6),(-10,90,1.2),(30,160,1.1),(230,-34,1.2)]))
-    far = "".join(f'<path d="{_smooth(f)}"/>' for f in WOLF_FAR)
-    P = WOLF["parts"]
-    def part(name, extra=""):
-        cid = f"w{n}{name}"
-        sh = "".join(f'<path style="--o:{k}" d="{d}"/>' for k, d in P[name]["shades"].items())
-        return (f'<g class="{name}">{extra and ""}<clipPath id="{cid}"><path d="{P[name]["path"]}"/></clipPath>'
-                f'<path class="body" d="{P[name]["path"]}"/><g class="sh" clip-path="url(#{cid})">{sh}</g>{extra}</g>')
-    detail = WOLF_DETAIL
-    eye = "M" + " L".join(f"{x} {y}" for x, y in WOLF_EYE) + " Z"
-    return (f'<svg class="wolf" viewBox="-40 -60 440 410" role="img" aria-label="{esc(label)}">'
-            f'<g class="stars">{stars}</g><circle class="moon" cx="24" cy="-18" r="22"/><g class="howl">{arcs}</g>'
-            f'<path class="outline" d="{WOLF["body"]}"/>'
-            f'<g class="fill"><g class="rig"><g class="far">{far}</g>'
-            + part("torso", f'<path class="detail" d="{detail[0]}"/><path class="detail" d="{detail[1]}"/>')
-            + part("tail", f'<path class="detail" d="{detail[2]}"/>')
-            + part("head", f'<path class="eye" d="{eye}"/>')
-            + f'</g></g><path class="ground" d="M110 343 H360"/></svg>')
-
-# ---------------------------------------------------------------- project art (theme-aware)
+# ---------------------------------------------------------------- project art (theme-aware SVG)
 def art(name):
     if name == "echo":
         return '''<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Line drawing of a self-balancing robot with a damped oscillation graph">
@@ -103,9 +96,8 @@ def art(name):
 <rect x="164" y="92" width="12" height="113" rx="2"/><circle cx="170" cy="86" r="13"/><line x1="170" y1="40" x2="170" y2="64" stroke-dasharray="3 4" stroke-opacity=".5"/></g>
 <circle cx="170" cy="205" r="16"/><circle cx="170" cy="205" r="3" style="fill:var(--a-ink)"/></g>
 <path d="M226 150 C 238 110, 246 110, 256 150 S 270 182, 280 150 S 292 128, 300 150 S 310 164, 316 150 S 324 143, 330 150 S 338 154, 344 150 L 362 150" fill="none" style="stroke:var(--a-red)" stroke-width="2"/>
-<line x1="222" y1="150" x2="366" y2="150" style="stroke:var(--a-mute)" stroke-opacity=".5" stroke-dasharray="2 4"/>
 <g font-family="ui-monospace, Menlo, monospace" font-size="9" style="fill:var(--a-mute)" letter-spacing=".08em">
-<text x="40" y="34">ECHO BALANCER · eYRC 2026–27</text><text x="226" y="100">θ(t) → 0</text><text x="226" y="198">PID · LQR · COPPELIASIM</text><text x="40" y="258">TASK 1A · 1B · 1C</text></g></svg>'''
+<text x="40" y="34">ECHO BALANCER · eYRC 2026–27</text><text x="226" y="100">θ(t) → 0</text><text x="226" y="198">PID · LQR</text></g></svg>'''
     if name == "arm":
         return '''<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Blueprint drawing of a robotic arm with gripper reaching a target">
 <defs><pattern id="ag" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M16 0H0V16" fill="none" style="stroke:var(--a-grid)"/></pattern></defs>
@@ -120,9 +112,9 @@ def art(name):
 <circle cx="278" cy="122" r="5" style="fill:var(--a-bg)"/><path d="M282 116 l14 -6 l6 6 M282 128 l14 6 l6 -6"/></g></g></g>
 <g style="stroke:var(--a-red)" stroke-width="1.5"><circle cx="318" cy="118" r="9" fill="none"/><line x1="304" y1="118" x2="332" y2="118"/><line x1="318" y1="104" x2="318" y2="132"/></g>
 <g font-family="ui-monospace, Menlo, monospace" font-size="9" style="fill:var(--a-mute)" letter-spacing=".08em">
-<text x="30" y="34">ARM CONTROL SUITE · SIM → REAL</text><text x="140" y="228">J1</text><text x="176" y="170">J2</text><text x="268" y="146">J3</text><text x="300" y="94">TARGET</text><text x="30" y="282">FK · IK · ARDUINO SERIAL</text></g></svg>'''
+<text x="30" y="34">ARM CONTROL SUITE · SIM → REAL</text><text x="300" y="94">TARGET</text></g></svg>'''
     if name == "bin":
-        return '''<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Drawing of a smart bin sending LoRa signals to a route map">
+        return '''<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Drawing of a smart bin sending radio signals to a route map">
 <rect width="400" height="300" style="fill:var(--a-bg)"/>
 <g fill="none" style="stroke:var(--a-ink)" stroke-width="2"><path d="M86 130 h84 l-8 104 h-68 z"/><line x1="80" y1="122" x2="176" y2="122"/><line x1="112" y1="114" x2="144" y2="114"/></g>
 <rect x="100" y="178" width="56" height="48" style="fill:var(--a-red)"/>
@@ -134,42 +126,39 @@ def art(name):
 <g style="fill:var(--a-ink)"><circle cx="250" cy="230" r="4"/><circle cx="278" cy="180" r="4"/><circle cx="330" cy="196" r="4"/><circle cx="362" cy="92" r="4"/></g>
 <circle cx="316" cy="120" r="6" style="fill:var(--a-red)"><animate attributeName="r" values="5;8;5" dur="1.6s" repeatCount="indefinite"/></circle>
 <g font-family="ui-monospace, Menlo, monospace" font-size="9" style="fill:var(--a-mute)" letter-spacing=".08em">
-<text x="30" y="34">SMART BIN · SIH 2026 · TEAM LUMOS</text><text x="88" y="262">FILL 82%</text><text x="214" y="70">LoRa SX1278</text><text x="326" y="138">PRIORITY</text><text x="230" y="262">ROUTE → DRIVER APP</text></g></svg>'''
+<text x="30" y="34">SMART BIN · SIH 2026 · TEAM LUMOS</text><text x="88" y="262">FILL 82%</text><text x="230" y="262">ROUTE → DRIVER APP</text></g></svg>'''
     if name == "ninety":
         dots = "".join(f'<circle cx="{52 + (i % 15) * 21}" cy="{78 + (i // 15) * 25}" r="5.5"/>' for i in range(90))
         return ('<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="A grid of ninety days, filled up to today" data-days-start="2026-09-23">'
                 '<rect width="400" height="300" style="fill:var(--a-bg)"/>'
                 f'<g class="days">{dots}</g>'
                 '<g font-family="ui-monospace, Menlo, monospace" font-size="9" style="fill:var(--a-mute)" letter-spacing=".08em">'
-                '<text x="52" y="44">90 DAY PROGRESS · ONE SMALL THING A DAY</text><text x="52" y="248" data-days-label>DAY — / 90</text></g></svg>')
+                '<text x="52" y="44">90 DAY PROGRESS · ONE THING A DAY</text><text x="52" y="248" data-days-label>DAY — / 90</text></g></svg>')
     return ""
 
-ART_MODE = {"echo": "art-night", "bin": "art-night", "arm": "art-day", "ninety": "art-day"}
-
-def patch(text, num):
-    return f'''<div class="patch" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="p{num}" d="M50 50 m-38 0 a38 38 0 1 1 76 0 a38 38 0 1 1 -76 0"/></defs><circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" stroke-opacity=".5"/><circle cx="50" cy="50" r="28" fill="none" stroke="currentColor" stroke-opacity=".5"/><text font-family="ui-monospace, Menlo, monospace" font-size="8.4" letter-spacing="2.2" fill="currentColor"><textPath href="#p{num}">{esc(text)}</textPath></text></svg><b>{num}</b></div>'''
-
-# ---------------------------------------------------------------- shell
-THEME_SCRIPT = ("<script>(function(){var d=document.documentElement,t;try{t=localStorage.getItem('theme')}catch(e){}"
-                "if(t!=='dark'&&t!=='light'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}"
-                "d.setAttribute('data-theme',t)})()</script>")
+# ---------------------------------------------------------------- head / shell
+# Runs before paint: restores interface, colour-vision mode, brightness and text size so nothing flashes.
+BOOT = ("<script>(function(){var d=document.documentElement,s={};try{s=JSON.parse(localStorage.getItem('tas')||'{}')}catch(e){}"
+        "d.setAttribute('data-ui',s.ui||'riot');if(s.cvd)d.setAttribute('data-cvd',s.cvd);"
+        "if(s.motion)d.setAttribute('data-motion',s.motion);if(s.links)d.setAttribute('data-links','1');"
+        "var L=s.lang||'en';d.setAttribute('lang',L==='ja'?'ja':L);d.setAttribute('data-lang',L);"
+        "if(s.text)d.style.fontSize=s.text+'%';if(s.bright&&s.bright!=100)d.style.setProperty('--bright',s.bright/100)})()</script>")
 
 def head(title, desc, path, p):
     url = SITE + "/" + ("" if path == "index.html" else path)
-    full = title if title.startswith("Aamir") else f"{title} — Aamir Sheikh"
+    full = title if title.startswith(BRAND) else f"{title} — {BRAND}"
     return f'''<!doctype html>
-<html lang="en" class="no-js" data-theme="light">
+<html lang="en" class="no-js" data-ui="riot">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-{THEME_SCRIPT}
+{BOOT}
 <title>{esc(full)}</title>
 <meta name="description" content="{esc(desc)}">
 <link rel="canonical" href="{url}">
-<meta name="theme-color" content="#efebe3">
-<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0b0b0d">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="The Aamir Sheikh">
+<meta property="og:site_name" content="{BRAND}">
 <meta property="og:title" content="{esc(full)}">
 <meta property="og:description" content="{esc(desc)}">
 <meta property="og:url" content="{url}">
@@ -178,16 +167,15 @@ def head(title, desc, path, p):
 <link rel="icon" href="{p}assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{p}assets/img/apple-touch-icon.png">
 <link rel="stylesheet" href="{p}assets/css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="{FONTS}" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="{FONTS}"></noscript>
+<script>window.TAS_ROOT="{p}";</script>
+<script src="{p}assets/js/i18n.js" defer></script>
 <script src="{p}assets/js/main.js" defer></script>
 </head>
 '''
-
-SUN = '<svg class="sun-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>'
-MOON = '<svg class="moon-i" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></svg>'
-MARK = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="currentColor"/><path d="M18 46 L30 16 L35 28 L40 22 L46 46 Z" fill="var(--bg)"/><circle cx="46" cy="16" r="4" fill="var(--accent)"/></svg>'
 
 def header(current, p):
     links = []
@@ -196,60 +184,139 @@ def header(current, p):
         cur = ' aria-current="page"' if f == current else ""
         links.append(f'<a href="{p}{f}"{cur}>{c[1]}</a>')
     return f'''<a class="skip" href="#main">Skip to content</a>
-<div class="grain" aria-hidden="true"></div>
+<div class="fx-tex" aria-hidden="true"></div>
 <header class="site-head">
   <div class="wrap">
-    <a class="wordmark" href="{p}index.html" aria-label="Aamir Sheikh — home">{MARK}Aamir Sheikh <small>CSE · Tezpur</small></a>
+    <a class="wordmark" href="{p}index.html" aria-label="{BRAND}, home"><span class="wm-the">THE</span> AAMIR SHEIKH</a>
     <nav class="nav" aria-label="Primary">{"".join(links)}</nav>
     <div class="head-r">
-      <button class="pill theme-btn" type="button" data-theme-toggle aria-label="Switch theme" title="Day / Night (T)">{SUN}{MOON}</button>
-      <button class="pill menu-btn" type="button" aria-controls="pause" aria-expanded="false">Menu <kbd>Esc</kbd></button>
+      <div class="lang">
+        <button class="pill lang-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="lang-menu" aria-label="Language: English">{ico("languages")}<span data-lang-code>EN</span></button>
+        <ul class="lang-menu" id="lang-menu" role="menu" aria-label="Language" hidden>
+          <li role="none"><button role="menuitemradio" aria-checked="true" data-set-lang="en" lang="en" type="button">English</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="de" lang="de" type="button">Deutsch</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="fr" lang="fr" type="button">Français</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="ja" lang="ja" type="button">日本語</button></li>
+        </ul>
+      </div>
+      <button class="pill icon-pill music-btn" type="button" data-music-toggle aria-pressed="false" aria-label="Play music">{ico("play", "i-play")}{ico("pause", "i-pause")}<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
+      <button class="pill icon-pill" type="button" data-panel-open aria-controls="panel" aria-expanded="false" aria-label="Open settings: interface, music, sound and accessibility">{ico("sliders-horizontal")}</button>
+      <button class="pill menu-btn" type="button" aria-controls="pause" aria-expanded="false">{ico("menu")}<span class="menu-t">Menu</span> <kbd>Esc</kbd></button>
     </div>
   </div>
 </header>
 '''
 
+UIS = [
+    # key, interface name, music name, icon, swatches, blurb
+    ("riot", "Riot", "Electric Guitar", "guitar", ["#0b0b0d", "#ff0054", "#9eff00", "#f4f1ea"], "Loud, slashed, neon."),
+    ("noir", "Noir", "Smooth Jazz", "coffee", ["#0e1424", "#d4a24c", "#9a2a3a", "#f3e9d2"], "Midnight, brass, slow."),
+    ("village", "Village", "Ambient Village", "trees", ["#efe6d2", "#5b7b4a", "#c8643b", "#2b2a26"], "Paper, moss, morning."),
+]
+
+def settings_panel():
+    ui_cards = "".join(f'''<label class="ui-card" data-ui-card="{k}"><input type="radio" name="ui" value="{k}"{" checked" if k == "riot" else ""}>
+<span class="sw" aria-hidden="true">{"".join(f'<i style="background:{c}"></i>' for c in sw)}</span>
+<span class="ui-n">{ico(icon)} {n}</span><span class="ui-m">{ico("disc-3")} {mus}</span><span class="ui-b">{b}</span></label>''' for k, n, mus, icon, sw, b in UIS)
+    tracks = "".join(f'<label class="chip"><input type="radio" name="track" value="{k}"{" checked" if k == "riot" else ""}><span>{ico(icon)} {mus}</span></label>' for k, n, mus, icon, sw, b in UIS)
+    cvd = [("none", "Default"), ("protan", "Protanopia (red-weak)"), ("deutan", "Deuteranopia (green-weak)"), ("tritan", "Tritanopia (blue-weak)"), ("mono", "Monochrome"), ("contrast", "High contrast")]
+    cvd_html = "".join(f'<label class="chip"><input type="radio" name="cvd" value="{k}"{" checked" if k == "none" else ""}><span>{n}</span></label>' for k, n in cvd)
+    return f'''<div class="panel-wrap" id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-h" aria-hidden="true">
+  <div class="panel-card">
+    <div class="panel-top"><h2 id="panel-h">{ico("sliders-horizontal")} Settings</h2><button type="button" class="pill icon-pill" data-panel-close aria-label="Close settings">{ico("x")}</button></div>
+
+    <section aria-labelledby="ps-lang"><h3 id="ps-lang" class="label">{ico("languages")} Language</h3>
+      <div class="chips" role="radiogroup" aria-label="Language">{"".join(f'<label class="chip"><input type="radio" name="lang" value="{k}"{" checked" if k == "en" else ""}><span lang="{k}">{n}</span></label>' for k, n in [("en", "English"), ("de", "Deutsch"), ("fr", "Français"), ("ja", "日本語")])}</div>
+    </section>
+
+    <section aria-labelledby="ps-ui"><h3 id="ps-ui" class="label">{ico("palette")} Interface</h3>
+      <div class="ui-cards" role="radiogroup" aria-label="Interface">{ui_cards}</div>
+    </section>
+
+    <section aria-labelledby="ps-snd"><h3 id="ps-snd" class="label">{ico("headphones")} Music &amp; sound</h3>
+      <label class="tog"><input type="checkbox" name="link" checked><span class="tog-ui" aria-hidden="true"></span><span>Music follows the interface</span></label>
+      <div class="chips" role="radiogroup" aria-label="Music track" data-tracks>{tracks}</div>
+      <div class="row-ctl"><button type="button" class="btn btn--small" data-music-toggle aria-pressed="false">{ico("play", "i-play")}{ico("pause", "i-pause")}<span data-music-label>Play music</span></button>
+        <label class="rng">{ico("volume-2")}<span class="sr">Music volume</span><input type="range" name="vol" min="0" max="100" value="55"></label></div>
+      <label class="tog"><input type="checkbox" name="sfx" checked><span class="tog-ui" aria-hidden="true"></span><span>Click &amp; menu sounds</span></label>
+      <label class="tog"><input type="checkbox" name="amb"><span class="tog-ui" aria-hidden="true"></span><span>Background ambience</span></label>
+    </section>
+
+    <section aria-labelledby="ps-a11y"><h3 id="ps-a11y" class="label">{ico("accessibility")} Accessibility</h3>
+      <p class="mini">Colour vision</p>
+      <div class="chips" role="radiogroup" aria-label="Colour vision mode">{cvd_html}</div>
+      <label class="rng wide">{ico("sun-dim")}<span>Brightness</span><input type="range" name="bright" min="50" max="130" value="100" aria-describedby="bright-v"><output id="bright-v">100%</output></label>
+      <label class="rng wide">{ico("a-large-small")}<span>Text size</span><input type="range" name="text" min="85" max="150" step="5" value="100" aria-describedby="text-v"><output id="text-v">100%</output></label>
+      <label class="tog"><input type="checkbox" name="motion"><span class="tog-ui" aria-hidden="true"></span><span>Reduce motion</span></label>
+      <label class="tog"><input type="checkbox" name="links"><span class="tog-ui" aria-hidden="true"></span><span>Underline all links</span></label>
+      <div class="row-ctl"><button type="button" class="btn btn--small" data-read>{ico("speech")}<span data-read-label>Read this page aloud</span></button>
+        <button type="button" class="btn btn--small btn--ghost" data-reset>{ico("rotate-ccw")}Reset</button></div>
+      <p class="mini muted">Works with TalkBack, VoiceOver and NVDA. Shortcuts: <kbd>Esc</kbd> menu · <kbd>S</kbd> settings · <kbd>M</kbd> music.</p>
+    </section>
+  </div>
+</div>'''
+
 def pause_menu(current, p):
     items = ['<li><button type="button" data-resume><span class="num">▸</span>Resume</button></li>',
              f'<li><a href="{p}index.html"{" aria-current=page" if current == "index.html" else ""}><span class="num">00</span>Home</a></li>']
-    for f, label, roman, title, d in CHAPTERS:
+    for f, label, roman, title, d, icon in CHAPTERS:
         cur = ' aria-current="page"' if f == current else ""
         items.append(f'<li><a href="{p}{f}"{cur}><span class="num">{roman}</span>{title}</a></li>')
     items.append(f'<li><a href="{p}90-day-progress/"><span class="num">↗</span>90 Day Progress</a></li>')
-    items.append('<li><button type="button" data-theme-toggle><span class="num">☾</span>Lights: <span data-theme-label>Day</span></button></li>')
+    items.append('<li><button type="button" data-panel-open><span class="num">⚙</span>Settings</button></li>')
     return f'''<div class="pause" id="pause" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
   <div class="pause-card">
+    <p class="pause-k" aria-hidden="true">PAUSED</p>
     <h2>Paused</h2>
     <ul class="pause-list">{"".join(items)}</ul>
-    <div class="pause-foot"><span>↑ ↓ Select</span><span>T Lights</span><span>Esc Resume</span></div>
+    <div class="pause-foot"><span>↑ ↓ Select</span><span>S Settings</span><span>Esc Resume</span></div>
   </div>
 </div>
 <div class="player" id="player" role="dialog" aria-modal="true" aria-label="Video player" aria-hidden="true">
-  <div class="player-bar"><span class="label player-title"></span><button class="player-close" type="button">Close ✕</button></div>
-  <video controls playsinline preload="none"></video>
+  <div class="player-bar"><span class="label player-title"></span><span class="player-q label" aria-live="polite"></span><button class="pill player-close" type="button">{ico("x")} Close</button></div>
+  <div class="player-stage"><video controls playsinline preload="none"></video></div>
 </div>
+<div class="sr" aria-live="polite" id="announce"></div>
 '''
 
+def intro():
+    return f'''<div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="intro-t" hidden>
+  <div class="intro-bars" aria-hidden="true"><i></i><i></i></div>
+  <div class="intro-slash" aria-hidden="true"></div>
+  <div class="intro-c">
+    <p class="intro-k" aria-hidden="true">ザ・アーミル・シェイク</p>
+    <h2 id="intro-t" class="intro-t"><span>THE AAMIR SHEIKH</span><em>production</em></h2>
+    <div class="intro-btns">
+      <button type="button" class="btn btn--solid" data-enter="sound">{ico("headphones")} Enter with sound</button>
+      <button type="button" class="btn btn--ghost" data-enter="quiet">{ico("volume-x")} Enter quietly</button>
+    </div>
+    <p class="mini intro-h">Change interface, music &amp; accessibility anytime with {ico("sliders-horizontal")} or the <kbd>S</kbd> key.</p>
+  </div>
+</div>'''
+
 def footer(p):
-    pages = "".join(f'<li><a href="{p}{f}">{t}</a></li>' for f, l, r, t, d in CHAPTERS)
+    pages = "".join(f'<li><a href="{p}{f}">{ico(icon)} {t}</a></li>' for f, l, r, t, d, icon in CHAPTERS)
     return f'''<footer class="site-foot">
-  <a class="cat" href="{p}inspirations.html#stray" aria-label="A small cat. It leads to the inspirations page."><svg viewBox="0 0 34 22" fill="currentColor" aria-hidden="true"><path class="tail" d="M7 19c-5 0-7-4-5-8 1-2 3-2 3 0-1 2 0 4 2 4z"/><path d="M8 21c-1-5 2-9 8-10l3-.3 2-4 1.6 3 2.4 0 1.6-3 1.4 4.3c1.6 1 2 3 1.6 4.6L28 21z"/></svg></a>
   <div class="wrap">
-    <div class="grid">
+    <div class="foot-grid">
       <div class="col big">
-        <p class="label">The Aamir Sheikh</p>
-        <p class="h-m mt-s" style="max-width:22em">A living record of the work, the struggle and the stories that shaped it. Updated whenever I level up.</p>
-        <p class="mt-s"><a class="link" href="mailto:{EMAIL}">{EMAIL}</a></p>
+        <p class="label">{BRAND}</p>
+        <p class="h-m mt-s">A living save file. Updated whenever I level up.</p>
+        <div class="foot-cta mt-s">
+          <a class="btn btn--solid" href="{p}order.html">{ico("shopping-bag")} Order</a>
+          <a class="btn" href="https://wa.me/{WHATSAPP}" target="_blank" rel="noopener">{ico("message-circle")} WhatsApp</a>
+          <a class="btn" href="mailto:{EMAIL}">{ico("mail")} Email</a>
+        </div>
       </div>
-      <div class="col"><p class="label">Chapters</p><ul class="mt-s">{pages}</ul></div>
-      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s"><li><a href="{GITHUB}" rel="me noopener" target="_blank">GitHub ↗</a></li><li><a href="{p}90-day-progress/">90 Day Progress ↗</a></li><li><a href="mailto:{EMAIL}">Email</a></li><li><button type="button" data-theme-toggle class="link" style="color:var(--fg-2)">Lights: <span data-theme-label>Day</span></button></li></ul></div>
+      <div class="col"><p class="label">Chapters</p><ul class="mt-s foot-list">{pages}</ul></div>
+      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li><li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
     </div>
     <div class="foot-base label">
-      <span>© <span data-year>2026</span> Aamir Mehtab Sheikh</span>
-      <span>Tezpur, Assam · <span data-clock>IST</span></span>
+      <span>© <span data-year>2026</span> {BRAND}</span>
+      <span>{ico("map-pin")} Tezpur, Assam · <span data-clock>IST</span></span>
       <span>Run with the pack</span>
     </div>
-    <p class="giant" aria-hidden="true">Aamir <em>Sheikh</em></p>
+    <p class="giant" aria-hidden="true"><span>THE</span> AAMIR SHEIKH</p>
   </div>
 </footer>
 '''
@@ -257,495 +324,584 @@ def footer(p):
 def chapter_nav(current, p):
     files = [c[0] for c in CHAPTERS]
     i = files.index(current)
-    prev = CHAPTERS[i - 1] if i > 0 else None
-    nxt = CHAPTERS[i + 1] if i < len(CHAPTERS) - 1 else None
-    out = '<section class="wrap section--tight"><ul class="index-list">'
-    if nxt: out += f'<li><a href="{p}{nxt[0]}"><span class="num">{nxt[2]}</span><span class="t">Next: {nxt[3]}</span><span class="d">{nxt[4]}</span></a></li>'
-    if prev: out += f'<li><a href="{p}{prev[0]}"><span class="num">{prev[2]}</span><span class="t">Back: {prev[3]}</span><span class="d">{prev[4]}</span></a></li>'
-    return out + '</ul></section>'
+    nxt = CHAPTERS[(i + 1) % len(CHAPTERS)]
+    prev = CHAPTERS[i - 1]
+    return f'''<section class="wrap section--tight"><ul class="index-list">
+<li><a href="{p}{nxt[0]}"><span class="num">{nxt[2]}</span><span class="t">{ico(nxt[5])} Next: {nxt[3]}</span><span class="d">{nxt[4]}</span></a></li>
+<li><a href="{p}{prev[0]}"><span class="num">{prev[2]}</span><span class="t">{ico(prev[5])} Back: {prev[3]}</span><span class="d">{prev[4]}</span></a></li>
+</ul></section>'''
 
-def page(path, title, desc, body, current=None, night=False, depth=0):
+def page(path, title, desc, body, current=None, depth=0, home=False):
     p = "../" * depth
-    cls = ' class="night"' if night else ""
-    doc = head(title, desc, path, p) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p) + f'<main id="main">\n{body}\n</main>\n' + footer(p) + "</body>\n</html>\n"
+    cls = ' class="home"' if home else ""
+    doc = (head(title, desc, path, p) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p)
+           + settings_panel() + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + "</body>\n</html>\n")
     doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
     out = os.path.join(ROOT, path)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as f: f.write(doc)
     print("wrote", path)
 
-def page_head(roman, chapter, h1, lead):
+def page_head(roman, chapter, h1, lead, icon="sparkles"):
     return f'''<section class="wrap page-head">
   <span class="big-num" aria-hidden="true">{roman}</span>
-  <div class="chapter rv"><span class="roman">{roman}</span><span class="label">Chapter {roman} — {chapter}</span></div>
-  <h1 class="h-xl split-words">{h1}</h1>
+  <div class="chapter rv"><span class="roman">{ico(icon)}</span><span class="label">Chapter {roman} — {chapter}</span></div>
+  <h1 class="h-xl split-words slash-in">{h1}</h1>
   <p class="lead muted rv rv-d2">{lead}</p>
 </section>'''
 
-def epilogue(p, heading="Have something <em>worth building</em>?"):
+def epilogue(p, heading="Got something <em>worth building</em>?"):
     return f'''<section class="epilogue cv">
   <div class="wrap section">
-    <div class="terminal rv"><span class="dim">&gt; INTERFACE 2026 // INCOMING TRANSMISSION</span><br>&gt; PRIORITY ONE: SAY HELLO<span class="cursor"></span></div>
+    <div class="terminal rv"><span class="dim">&gt; INCOMING TRANSMISSION</span><br>&gt; PRIORITY ONE: SAY HELLO<span class="cursor"></span></div>
     <h2 class="h-xl split-words mt-m" style="max-width:12em">{heading}</h2>
-    <p class="mail mt-m rv"><a href="mailto:{EMAIL}">{EMAIL}</a></p>
-    <div class="m-links mt-m rv"><a class="btn" href="{p}services.html">What I can make <span class="arr">→</span></a><a class="btn" href="{GITHUB}" target="_blank" rel="noopener">GitHub <span class="arr">↗</span></a></div>
+    <div class="m-links mt-m rv">
+      <a class="btn btn--solid" href="{p}order.html">{ico("shopping-bag")} Place an order <span class="arr">→</span></a>
+      <a class="btn" href="https://wa.me/{WHATSAPP}" target="_blank" rel="noopener">{ico("message-circle")} WhatsApp</a>
+      <a class="btn" href="mailto:{EMAIL}">{ico("mail")} {EMAIL}</a>
+    </div>
   </div>
 </section>'''
 
-def video_tile_media(slug, full=False, p=""):
-    src = p + M + slug + (".mp4" if full else "-loop.mp4")
-    return f'''<div class="tile-media wipe" data-preview><img src="{p}{M}{slug}.webp" alt="" loading="lazy" decoding="async" width="1920" height="1080"><video muted loop playsinline preload="none" data-src="{src}" aria-hidden="true"></video></div>'''
+def video_tile_media(slug, p="", full=False):
+    c = CLIP[slug]
+    w, h = (1080, 1920) if c[4] == "v" else (1920, 1080)
+    src = p + M + slug + "-loop.mp4"
+    return f'''<div class="tile-media wipe" data-preview><img src="{p}{M}{slug}.webp" alt="" loading="lazy" decoding="async" width="{w}" height="{h}"><video muted loop playsinline preload="none" data-src="{src}" aria-hidden="true"></video></div>'''
 
-def art_media(name):
-    return f'<div class="tile-media wipe {ART_MODE[name]}">{art(name)}</div>'
+def clip_html(c, p=""):
+    slug, title, kind, year, ori, hls = c
+    q = '<span class="q-badge">4K</span>' if hls else ""
+    return f'''<div class="clip {ori} rv"><a class="clip-a" href="{p}{M}{slug}.mp4" {play_attrs(slug, p)} aria-label="Play {esc(title)}, {esc(kind)}">{video_tile_media(slug, p=p)}<span class="play-ico" aria-hidden="true">{ico("play")}</span>{q}</a><div class="tile-cap"><h3>{esc(title)}</h3><span class="label">{year}</span><p class="tile-kind">{esc(kind)}</p><a class="want" href="{p}order.html?like={slug}">{ico("shopping-bag")} I want one like this</a></div></div>'''
+
+def art_media(name, mode):
+    return f'<div class="tile-media wipe {mode}">{art(name)}</div>'
+
+# ---------------------------------------------------------------- the hero
+HERO_TAGS = [("clapperboard", "Motion"), ("box", "3D"), ("gamepad-2", "Games"), ("bot", "Robots"), ("code-xml", "Web")]
+
+def hero():
+    tags = "".join(f'<li>{ico(i)}<span>{t}</span></li>' for i, t in HERO_TAGS)
+    return f'''<section class="hero" aria-labelledby="hero-t">
+  <div class="hero-bg" aria-hidden="true">
+    <video class="hero-vid" muted loop playsinline preload="none" data-src="{M}money-follows-loop.mp4" poster="{M}money-follows.webp"></video>
+    <div class="hero-scene hs-riot"><i class="slash s1"></i><i class="slash s2"></i><i class="slash s3"></i><span class="spray">TAS</span><span class="drip"></span></div>
+    <div class="hero-scene hs-noir"><i class="spot"></i><i class="smoke"></i></div>
+    <div class="hero-scene hs-village"><svg viewBox="0 0 1200 500" preserveAspectRatio="xMidYMax slice"><circle class="sunc" cx="640" cy="150" r="64"/><path class="hill h3" d="M0 330 Q200 250 420 310 T820 290 T1200 300 V500 H0Z"/><path class="hill h2" d="M0 380 Q260 300 520 370 T1000 350 T1200 360 V500 H0Z"/><path class="hill h1" d="M0 430 Q300 380 600 420 T1200 410 V500 H0Z"/><g class="birds"><path d="M300 60 q8 -8 16 0 q8 -8 16 0"/><path d="M350 36 q6 -6 12 0 q6 -6 12 0"/><path d="M262 44 q5 -5 10 0 q5 -5 10 0"/></g></svg></div>
+  </div>
+  <img class="hero-char hc-riot" src="assets/img/chars/riot.svg" alt="" aria-hidden="true" width="360" height="760" decoding="async">
+  <img class="hero-char hc-warm" src="assets/img/chars/village.svg" alt="" aria-hidden="true" width="360" height="760" decoding="async">
+  <div class="wrap hero-in">
+    <p class="hero-kicker label rv">{ico("map-pin")} B.Tech CSE · Tezpur University <span class="live">{ico("zap")} Open for freelance</span></p>
+    <h1 id="hero-t" class="hero-title" aria-label="{BRAND}">
+      <span class="ht-the" aria-hidden="true">THE</span>
+      <span class="ht-row" aria-hidden="true"><span class="ht-a" data-text="AAMIR">AAMIR</span></span>
+      <span class="ht-row" aria-hidden="true"><span class="ht-b" data-text="SHEIKH">SHEIKH</span></span>
+      <span class="ht-cut" aria-hidden="true"></span>
+    </h1>
+    <p class="hero-line rv rv-d2">I make things <em class="rot" aria-label="move"><span class="on">move</span><span>feel</span><span>glow</span><span>howl</span></em> — pixels, players and robots.</p>
+    <ul class="hero-tags rv rv-d3" aria-label="What I do">{tags}</ul>
+    <div class="hero-cta rv rv-d3">
+      <a class="btn btn--solid" href="projects.html">{ico("circle-play")} See the work</a>
+      <a class="btn" href="order.html">{ico("shopping-bag")} Order something</a>
+    </div>
+  </div>
+  <div class="hero-rank" aria-hidden="true"><b data-hero-rank>D</b><span data-hero-rank-w>Dull</span><i class="rank-bar"><i></i></i></div>
+  <p class="hero-k" aria-hidden="true">ザ・アーミル・シェイク</p>
+  <div class="hero-scroll label" aria-hidden="true">Scroll</div>
+</section>'''
 
 # ================================================================= HOME
 def build_home():
-    reel_items = [("meant-to-be-felt", True), ("design-is-a-game", True), ("blind-justice", False), ("create-blue", True), ("drift-grade", False)]
+    reel_items = ["money-follows", "meant-to-be-felt", "design-is-a-game", "blind-justice", "drift-grade"]
     vids = ticks = ""
-    for s, full in reel_items:
+    for s in reel_items:
         c = CLIP[s]
-        vids += f'<video muted playsinline loop preload="none" data-src="{M}{s}{".mp4" if full else "-loop.mp4"}" poster="{M}{s}.webp" data-full="{M}{s}.mp4" data-title="{esc(c[1])}" data-kind="{esc(c[2])}" aria-hidden="true"></video>'
+        vids += f'<video muted playsinline loop preload="none" data-src="{M}{s}-loop.mp4" poster="{M}{s}.webp" data-ori="{c[4]}" data-title="{esc(c[1])}" data-kind="{esc(c[2])}" {play_attrs(s).replace("data-title=", "data-ptitle=")} aria-hidden="true"></video>'
         ticks += f'<button type="button" aria-label="Show {esc(c[1])}"></button>'
-    chapters = "".join(f'<li class="rv"><a href="{f}"><span class="num">{r}</span><span class="t">{t}</span><span class="d">{d}</span></a></li>' for f, l, r, t, d in CHAPTERS)
-    body = f'''<div class="intro" aria-hidden="true"><i></i><span>A Tezpur production</span><i></i></div>
-<section class="wrap hero">
-  <div class="hero-text">
-    <div class="hero-meta label rv"><span>Aamir Mehtab Sheikh</span><span>B.Tech CSE, Tezpur University</span><span>Motion · 3D · Games · Robotics</span><span class="label--red">● Open for freelance</span></div>
-    <h1 class="h-xl split-words">I make things <em class="rot" aria-label="move"><span class="on">move</span><span>feel</span><span>glow</span><span>howl</span></em> — pixels, players and robots.</h1>
-    <div class="hero-foot">
-      <p class="lead muted rv rv-d2" style="max-width:30em">I’m a computer science student who edits, animates, models in Blender, and writes the code for games and robots after hours. This site is my journal: the work, the struggle and what I’m learning on the way.</p>
-      <a class="btn btn--solid rv rv-d3" href="projects.html">See the work <span class="arr">→</span></a>
-    </div>
-  </div>
-</section>
+    chapters = "".join(f'<li class="rv"><a href="{f}"><span class="num">{r}</span><span class="t">{ico(icon)} {t}</span><span class="d">{d}</span></a></li>' for f, l, r, t, d, icon in CHAPTERS)
+    stats = [("film", "14", "films cut"), ("box", "5", "Blender studies"), ("bot", "3", "robots in progress"), ("gamepad-2", "1", "western in dev")]
+    stat_html = "".join(f'<li class="rv"><span class="st-i">{ico(i)}</span><b data-count="{n}">{n}</b><span class="label">{t}</span></li>' for i, n, t in stats)
+    body = hero() + f'''
+<div class="marquee" aria-hidden="true"><div><span>Design is like a game</span><span>and I like to play</span><span>Create something new</span><span>Text isn’t just text</span><span>run with the pack</span></div><div><span>Design is like a game</span><span>and I like to play</span><span>Create something new</span><span>Text isn’t just text</span><span>run with the pack</span></div></div>
 
 <section class="reel" aria-label="Showreel">
-  <div class="reel-stage">{vids}<button class="reel-play" type="button" aria-label="Play with sound"></button></div>
+  <div class="reel-stage">{vids}<button class="reel-play" type="button" aria-label="Play with sound">{ico("play")}</button></div>
   <div class="reel-ui"><div><p class="label lbl">Showreel</p><p class="title">Showreel</p></div><div class="reel-ticks">{ticks}</div></div>
 </section>
 
-<div class="marquee" aria-hidden="true"><div><span>Design is like a game</span><span>and I like to play</span><span>Create something new</span><span>Text isn’t just text</span><span>run with the pack</span></div><div><span>Design is like a game</span><span>and I like to play</span><span>Create something new</span><span>Text isn’t just text</span><span>run with the pack</span></div></div>
+<section class="wrap section--tight"><ul class="stats">{stat_html}</ul></section>
 
 <section class="wrap section cv">
-  <div class="s-head"><p class="label">(01) Selected work</p><h2 class="h-l split-words">Seven missions. One direction: make people <em>feel</em> something.</h2></div>
+  <div class="s-head"><p class="label">{ico("clapperboard")} (01) Selected work</p><h2 class="h-l split-words">Seven missions. One goal: make you <em>feel</em> something.</h2></div>
   <div class="tiles">
-    <a class="tile tile--wide rv" href="projects.html#reel">{video_tile_media("meant-to-be-felt", full=True)}<div class="tile-cap"><h3>Motion Reel 2026</h3><span class="label">14 films</span><p class="tile-kind">Kinetic type, spec ads, colour grades, tracking and 3D — including the new “Money Follows” cut.</p></div></a>
-    <a class="tile rv" href="projects.html#blender"><div class="tile-media wipe"><img src="{B}blender-2.webp" alt="Blender render of a pink donut beside a mug" loading="lazy" decoding="async" width="1600" height="900"></div><div class="tile-cap"><h3>Blender Studies</h3><span class="label">3D</span><p class="tile-kind">The donut, a mug, a walnut table and a lot of light</p></div></a>
-    <a class="tile rv rv-d1" href="projects.html#sundown-trail"><div class="tile-media wipe"><img src="assets/img/sundown-trail-pause.webp" alt="The paper-style pause menu from Sundown Trail" loading="lazy" decoding="async" width="780" height="1040"></div><div class="tile-cap"><h3>Sundown Trail</h3><span class="label badge-live">In dev</span><p class="tile-kind">A western game, built piece by piece</p></div></a>
-    <a class="tile rv" href="projects.html#echo-balancer">{art_media("echo")}<div class="tile-cap"><h3>Echo Balancer</h3><span class="label badge-live">eYRC</span><p class="tile-kind">Teaching a robot to stand still</p></div></a>
-    <a class="tile rv rv-d1" href="projects.html#robotic-arm">{art_media("arm")}<div class="tile-cap"><h3>Arm Control Suite</h3><span class="label">Robotics</span><p class="tile-kind">Simulate it, then move the real one</p></div></a>
-    <a class="tile rv" href="projects.html#smart-bin">{art_media("bin")}<div class="tile-cap"><h3>Smart Bin</h3><span class="label">SIH 2026</span><p class="tile-kind">Waste pickup, by priority</p></div></a>
-    <a class="tile rv rv-d1" href="projects.html#ninety-days">{art_media("ninety")}<div class="tile-cap"><h3>90 Day Progress</h3><span class="label">Live</span><p class="tile-kind">My accountability app</p></div></a>
+    <a class="tile tile--wide rv" href="projects.html#reel">{video_tile_media("meant-to-be-felt")}<div class="tile-cap"><h3>{ico("film")} Motion Reel 2026</h3><span class="label">14 films</span></div></a>
+    <a class="tile rv" href="projects.html#blender"><div class="tile-media wipe"><img src="{B}blender-2.webp" alt="Blender render of a pink donut beside a mug" loading="lazy" decoding="async" width="1600" height="900"></div><div class="tile-cap"><h3>{ico("box")} Blender Studies</h3><span class="label">3D</span></div></a>
+    <a class="tile rv rv-d1" href="projects.html#sundown-trail"><div class="tile-media wipe"><img src="assets/img/sundown-trail-pause.webp" alt="The paper-style pause menu from Sundown Trail" loading="lazy" decoding="async" width="780" height="1040"></div><div class="tile-cap"><h3>{ico("gamepad-2")} Sundown Trail</h3><span class="label badge-live">In dev</span></div></a>
+    <a class="tile rv" href="projects.html#echo-balancer">{art_media("echo", "art-night")}<div class="tile-cap"><h3>{ico("bot")} Echo Balancer</h3><span class="label badge-live">eYRC</span></div></a>
+    <a class="tile rv rv-d1" href="projects.html#robotic-arm">{art_media("arm", "art-day")}<div class="tile-cap"><h3>{ico("cpu")} Arm Control Suite</h3><span class="label">Robotics</span></div></a>
+    <a class="tile rv" href="projects.html#smart-bin">{art_media("bin", "art-night")}<div class="tile-cap"><h3>{ico("trees")} Smart Bin</h3><span class="label">SIH 2026</span></div></a>
+    <a class="tile rv rv-d1" href="projects.html#ninety-days">{art_media("ninety", "art-day")}<div class="tile-cap"><h3>{ico("trophy")} 90 Day Progress</h3><span class="label">Live</span></div></a>
   </div>
 </section>
 
 <section class="wrap section cv" style="padding-top:0">
-  <div class="split">
-    <div class="side"><p class="label">(02) The story so far</p></div>
-    <div class="main wide"><p class="pull split-words">This site isn’t a résumé. It’s a <em>save file</em>.</p></div>
-  </div>
-  <div class="split">
-    <div class="side"></div>
-    <div class="main prose rv">
-      <p>Every chapter here is a checkpoint: what I could do, what I couldn’t yet, and what I was trying next. Some pages are finished. Most are still loading.</p>
-      <p>I study computer science at Tezpur University. Outside class I cut videos and animate type, light donuts in Blender, build a western game called Sundown Trail, and write control code that keeps a robot from falling over. They look like different jobs. To me it’s one job: making things that move people.</p>
-      <p class="mt-m"><a class="btn" href="purpose.html">Read Chapter I <span class="arr">→</span></a></p>
-    </div>
-  </div>
+  <p class="pull split-words">This site isn’t a résumé. It’s a <em>save file</em>.</p>
 </section>
 
 <section class="wrap section cv" style="padding-top:0">
-  <div class="s-head"><p class="label">(03) Chapters</p><h2 class="h-l split-words">Pick up where you left off.</h2></div>
+  <div class="s-head"><p class="label">{ico("layers")} (02) Chapters</p><h2 class="h-l split-words">Pick up where you left off.</h2></div>
   <ul class="index-list">{chapters}</ul>
 </section>
 ''' + epilogue("")
-    page("index.html", "Aamir Sheikh — motion designer, 3D artist, game developer, CS student",
-         "Portfolio of Aamir Mehtab Sheikh: motion graphics, video editing, Blender 3D, game development and robotics from a computer science student at Tezpur University.",
-         body, current="index.html")
+    page("index.html", f"{BRAND} — motion designer, 3D artist, game developer, CS student",
+         "THE AAMIR SHEIKH: motion graphics, video editing, Blender 3D, game development and robotics by a computer science student at Tezpur University.",
+         body, current="index.html", home=True)
 
 # ================================================================= STORY
 def build_story():
     body = page_head("I", "Origin", "Every game starts with a <em>tutorial</em>. This is mine.",
-        "Welcome. This is where I keep a record of my work and my life as I go: what I can do, what I’m building and where I’m headed. It’s a log that keeps getting updated, not a finished résumé.")
-    body += '''
-<section class="wrap section cv" style="padding-top:0">
+        "A log of what I can do, what I’m building and where I’m headed.", "flame")
+    facts = [("graduation-cap", "B.Tech CSE", "Tezpur University, Assam"), ("clapperboard", "Editor & animator", "Premiere · After Effects · Resolve"),
+             ("box", "3D", "Blender"), ("gamepad-2", "Game dev", "Godot · Unreal"), ("bot", "Robotics", "Python · C++ · Arduino")]
+    fact_html = "".join(f'<li class="rv">{ico(i if i != "graduation-cap" else "award")}<b>{t}</b><span>{d}</span></li>' for i, t, d in facts)
+    body += f'''
+<section class="wrap cv"><ul class="id-card">{fact_html}</ul></section>
+<section class="wrap section cv">
   <div class="split">
-    <div class="side"><p class="label">Why this exists</p></div>
-    <div class="main prose rv">
-      <p class="h-m">I wanted one place that shows the whole picture: the skills, the projects in progress, the failures and the people and stories that keep me going.</p>
-      <p>Most portfolios only show the highlight reel. I’d rather you see the run itself: the technologies I care about, the problems I’m stuck on and the goals I’ve set. If it does its job, you’ll leave knowing what I do <em>and</em> who I am.</p>
-    </div>
+    <div class="side"><p class="label">{ico("heart")} Why</p></div>
+    <div class="main"><p class="h-m rv">One place for the whole picture: skills, projects in progress, failures, and the stories that keep me going.</p></div>
   </div>
   <div class="split">
-    <div class="side"><p class="label">Who I am</p></div>
-    <div class="main prose rv">
-      <p>I’m Aamir Mehtab Sheikh, a B.Tech Computer Science &amp; Engineering student at Tezpur University in Assam.</p>
-      <p>My toolkit is a strange mix: a sketchbook, a video timeline, Blender, a game engine and a C++ compiler. I like it that way. Each one is a different way of making something people feel. A cut that lands on the beat, a render where the light falls just right, a menu that feels good to scroll and a robot that finally balances all give me the same small rush.</p>
-    </div>
+    <div class="side"><p class="label">{ico("zap")} The rush</p></div>
+    <div class="main"><p class="h-m rv">A cut on the beat. Light falling just right. A robot that finally balances. Same rush, every time.</p></div>
   </div>
   <div class="split">
-    <div class="side"><p class="label">The pack</p></div>
-    <div class="main prose rv">
-      <p>I love wolves for one reason above the rest: a wolf is strong because of its pack. Team LUMOS at the hackathon, my eYRC team, and everyone who has answered a question I was embarrassed to ask: that’s mine.</p>
-    </div>
+    <div class="side"><p class="label">{ico("trees")} The pack</p></div>
+    <div class="main"><p class="h-m rv">A wolf is strong because of its pack. Team LUMOS, my eYRC team, everyone who answered a question I was embarrassed to ask.</p></div>
   </div>
 </section>
 
 <section class="wrap section cv" style="padding-top:0">
-  <div class="s-head"><p class="label">The run so far</p><h2 class="h-l split-words">Checkpoints.</h2></div>
+  <div class="s-head"><p class="label">{ico("map-pin")} The run so far</p><h2 class="h-l split-words">Checkpoints.</h2></div>
   <ol class="timeline">
-    <li class="rv"><span class="when">2025</span><div><h3>Joined B.Tech CSE at Tezpur University</h3><p>New city, new syllabus, and the first time I took code seriously.</p></div></li>
-    <li class="rv"><span class="when">Jan 2026</span><div><h3>Shipped version one of this site</h3><p>Hand-written HTML, a few pages and a lot of blue. It worked, and I learned I could put something on the internet.</p></div></li>
-    <li class="rv"><span class="when">May 2026</span><div><h3>Survived the Blender donut</h3><p>The rite of passage for every Blender beginner. Then a mug, a spoon, a walnut table and a lot of lighting experiments.</p></div></li>
-    <li class="rv"><span class="when">Jun – Aug 2026</span><div><h3>Went deep on motion design</h3><p>A Liquid Death spec spot and kinetic-type studies. I learned that text can perform.</p></div></li>
-    <li class="rv"><span class="when">Sep 2026</span><div><h3>Smart India Hackathon + the 90-day challenge</h3><p>Built Smart Bin with Team LUMOS and started a 90-day plan to get better at academics, programming and shipping projects.</p></div></li>
-    <li class="rv"><span class="when">Oct 2026</span><div><h3>Robots, a western and a 4K ad</h3><p>eYRC Echo Balancer, software for my robotic arm, Sundown Trail and the “Money Follows” edit. Then I rebuilt this site from scratch.</p></div></li>
+    <li class="rv"><span class="when">2025</span><div><h3>{ico("award")} Joined B.Tech CSE, Tezpur</h3></div></li>
+    <li class="rv"><span class="when">Jan 2026</span><div><h3>{ico("globe")} Shipped this site, version one</h3></div></li>
+    <li class="rv"><span class="when">May 2026</span><div><h3>{ico("box")} Survived the Blender donut</h3></div></li>
+    <li class="rv"><span class="when">Jun – Aug</span><div><h3>{ico("clapperboard")} Went deep on motion design</h3></div></li>
+    <li class="rv"><span class="when">Sep 2026</span><div><h3>{ico("trophy")} SIH 2026 + the 90-day challenge</h3></div></li>
+    <li class="rv"><span class="when">Oct 2026</span><div><h3>{ico("zap")} Robots, a western and a 4K ad</h3></div></li>
   </ol>
 </section>
 
 <section class="wrap section cv" style="padding-top:0">
-  <div class="split">
-    <div class="side"><p class="label">Where I’m headed</p></div>
-    <div class="main wide">
-      <ul class="offer">
-        <li class="rv"><span class="n">a.</span><h3>Ship Sundown Trail</h3><p>A playable western in the browser, then on phones, with Blender-made worlds.</p></li>
-        <li class="rv"><span class="n">b.</span><h3>Get strong at C++ &amp; DSA</h3><p>From the basics up, one small daily task at a time.</p></li>
-        <li class="rv"><span class="n">c.</span><h3>Finish eYRC strong</h3><p>Move from simulation to a robot that balances in the real world.</p></li>
-        <li class="rv"><span class="n">d.</span><h3>Take on real clients</h3><p>Motion, 3D and web work for people with something worth saying.</p></li>
-      </ul>
-    </div>
-  </div>
+  <div class="s-head"><p class="label">{ico("arrow-right")} Next quests</p></div>
+  <ul class="quests">
+    <li class="rv">{ico("gamepad-2")}<h3>Ship Sundown Trail</h3></li>
+    <li class="rv">{ico("code-xml")}<h3>Get strong at C++ &amp; DSA</h3></li>
+    <li class="rv">{ico("bot")}<h3>Finish eYRC strong</h3></li>
+    <li class="rv">{ico("shopping-bag")}<h3>Take on real clients</h3></li>
+  </ul>
 </section>
 ''' + chapter_nav("purpose.html", "")
-    page("purpose.html", "Story", "Who Aamir Sheikh is, why this site exists and where he’s headed — Chapter I.", body)
+    page("purpose.html", "Story", "Who THE AAMIR SHEIKH is, why this site exists and where he’s headed — Chapter I.", body)
 
 # ================================================================= STRUGGLES
 def build_struggles():
-    camp_ico = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 0-7z"/></svg>'
     trials = [
-        ("Time", "There are never enough hours.", "College, competitions, editing, Blender, a game and a robot. I say yes to everything, then run out of day. Big plans are easy to make. Finishing them is the hard part.", "Small daily tasks instead of giant plans. My 90 Day Progress tracker keeps me honest, one finished thing at a time."),
-        ("The learning curve", "Too much to learn, all at once.", "Control theory for eYRC, C++ from the basics, Blender, game engines, After Effects. Some weeks it feels like drinking from a fire hose.", "I learn by building. Each new idea goes into a real project the same week: a balancer, a game system or a render."),
-        ("Self-doubt", "The voice that says I’m not good enough.", "There are days I question whether I can actually pull any of this off, usually right before something works.", "I keep receipts. Every finished piece on this site is evidence against that voice."),
-        ("Resources", "Not always the right tools.", "Hardware is expensive, renders are slow and my laptop has opinions about 4K footage.", "Free and open tools first: Blender, Godot, Krita, DaVinci Resolve, and simulators before hardware."),
-        ("Balance", "Too many tabs open in life.", "Juggling studies, projects, competitions and people means something is always waiting.", "Clear goals, honest priorities and asking for help. No wolf hunts alone."),
+        ("clock", "Time", "Never enough hours.", "Small daily tasks, tracked in 90 Day Progress."),
+        ("layers", "The learning curve", "Too much to learn, all at once.", "Learn by building — the same week."),
+        ("eye", "Self-doubt", "The voice that says I’m not good enough.", "I keep receipts. This site is one."),
+        ("cpu", "Resources", "Hardware is expensive. Renders are slow.", "Free tools first. Simulate before buying."),
+        ("sun-dim", "Balance", "Too many tabs open in life.", "Clear goals. Ask for help. No wolf hunts alone."),
     ]
     rows = ""
-    for i, (name, h, b, camp) in enumerate(trials, 1):
+    for i, (icon, name, h, camp) in enumerate(trials, 1):
         rows += f'''<article class="trial rv">
   <div class="no">0{i}</div>
-  <div class="body"><p class="label">{name}</p><h2 class="mt-s">{h}</h2><p>{b}</p></div>
-  <div class="camp"><p class="label">{camp_ico} Base camp</p><p>{camp}</p></div>
+  <div class="body"><p class="label">{ico(icon)} {name}</p><h2 class="mt-s">{h}</h2></div>
+  <div class="camp"><p class="label">{ico("flame")} Base camp</p><p>{camp}</p></div>
 </article>'''
     body = page_head("II", "A survivor is born", "Everyone shows the highlight reel. <em>Here’s the rest.</em>",
-        "These are the struggles I’m dealing with right now, and what I’m doing about each one. I’m still working through all of them.")
+        "What I’m fighting right now — and what I’m doing about it.", "mountain")
     body += f'<section class="wrap cv" style="padding-bottom:clamp(48px,8vw,120px)">{rows}</section>'
-    body += '''<section class="wrap section" style="border-top:1px solid var(--rule)">
+    body += '''<section class="wrap section">
   <p class="pull split-words">Every version of me that failed taught the <em>next one</em> something.</p>
-  <p class="label mt-m rv">— Note to self, build 17</p>
 </section>''' + chapter_nav("struggles.html", "")
-    page("struggles.html", "Struggles", "The struggles behind the work — time, the learning curve, self-doubt — and how Aamir is fighting each one. Chapter II.", body, night=True)
+    page("struggles.html", "Struggles", "The struggles behind the work — time, the learning curve, self-doubt — and how THE AAMIR SHEIKH fights each one. Chapter II.", body)
 
 # ================================================================= SKILLS
 SKILLS = [
-    # slug, name, notches(1-5), level, blurb, tools, tech, methods, seen-in videos, seen-in images
-    ("video-editing", "Video Editing", 4, "Confident", "Cuts that land on the beat, colour that sets the mood and pacing that holds attention.",
-     ["Adobe Premiere Pro", "Adobe After Effects", "DaVinci Resolve"], ["Rotoscoping", "Tracking", "Masking"],
-     ["Colour correction", "Colour grading", "Compositing", "Transitions", "Motion graphics"], ["money-follows", "drift-grade", "drift-tracking", "chalamet-edit", "liquid-death", "coca-cola-doc"], []),
-    ("modeling-3d", "3D Modelling", 2, "Learning", "Blocking out props and scenes in Blender, then shading and lighting them until they feel real.",
+    ("video-editing", "Video Editing", "scissors", 4, "Confident", "Cuts on the beat. Colour that sets the mood.",
+     ["Premiere Pro", "After Effects", "DaVinci Resolve"], ["Rotoscoping", "Tracking", "Masking"],
+     ["Colour grading", "Compositing", "Transitions", "Motion graphics"], ["money-follows", "drift-grade", "drift-tracking", "chalamet-edit", "liquid-death", "coca-cola-doc"], []),
+    ("modeling-3d", "3D Modelling", "box", 2, "Learning", "Props and scenes in Blender, lit until they feel real.",
      ["Blender", "Cascadeur", "Unreal Engine"], ["Modelling", "Texturing", "Lighting", "Rendering"],
-     ["Hard-surface modelling", "Sculpting", "Shading", "Depth of field"], ["blind-justice"], [b[0] for b in BLENDER]),
-    ("graphic-design", "Graphic Design", 3, "Working", "Layout, type and image working together, from posters to thumbnails to titles.",
-     ["Illustrator", "Photoshop", "Figma"], ["Rotoscoping", "Masking", "Recompositing"],
-     ["Colour correction", "Colour grading", "Compositing", "Texturing", "Shading", "Text composition"], ["create-blue", "lego-engineering"], []),
-    ("frontend", "Frontend Development", 3, "Working", "Fast, hand-written websites that work on every screen, including this one.",
+     ["Hard-surface", "Sculpting", "Shading", "Depth of field"], ["blind-justice"], [b[0] for b in BLENDER]),
+    ("graphic-design", "Graphic Design", "pen-tool", 3, "Working", "Layout, type and image, working together.",
+     ["Illustrator", "Photoshop", "Figma"], ["Masking", "Recompositing"],
+     ["Colour grading", "Compositing", "Text composition"], ["create-blue", "lego-engineering"], []),
+    ("frontend", "Frontend Development", "code-xml", 3, "Working", "Fast, hand-written sites that work everywhere.",
      ["VS Code", "Chrome DevTools", "Figma"], ["HTML5", "CSS3", "JavaScript", "React (learning)"],
-     ["Responsive design", "Mobile-first layout", "Light & dark themes", "Clean UI structure"], [], []),
-    ("drawing", "Drawing & Sketching", 3, "Working", "Where every idea starts: thumbnails, characters and backgrounds.",
-     ["2D Pincel", "Krita", "Sketchbook"], ["Graphics tablet", "Traditional tools"],
-     ["Sketching", "Shading", "Line art", "Inking", "Colouring", "Character design", "Background art", "Concept art", "Composition"], [], []),
-    ("animation", "Animation", 2, "Learning", "Frame by frame or keyframed: making things feel alive.",
-     ["OpenToonz", "Adobe Animate", "Blender", "Cascadeur"], ["Frame interpolation", "Animation principles", "Upscaling"],
-     ["Frame by frame", "2D animation", "3D animation"], ["ink-reveal", "meant-to-be-felt", "design-is-a-game", "this-is-my", "physics-robotics"], []),
-    ("game-dev", "Game Development", 2, "Learning", "Systems, feel and atmosphere. Currently pouring all of it into Sundown Trail.",
+     ["Responsive", "Accessible", "Themes & sound"], [], []),
+    ("drawing", "Drawing & Sketching", "brush", 3, "Working", "Where every idea starts.",
+     ["2D Pincel", "Krita", "Sketchbook"], ["Graphics tablet", "Traditional"],
+     ["Line art", "Inking", "Colouring", "Character design", "Concept art"], [], []),
+    ("animation", "Animation", "sparkles", 2, "Learning", "Frame by frame or keyframed — making things feel alive.",
+     ["OpenToonz", "Adobe Animate", "Blender", "Cascadeur"], ["Interpolation", "Principles", "Upscaling"],
+     ["Frame by frame", "2D", "3D"], ["ink-reveal", "meant-to-be-felt", "design-is-a-game", "this-is-my", "physics-robotics"], []),
+    ("game-dev", "Game Development", "gamepad-2", 2, "Learning", "Systems, feel and atmosphere — all into Sundown Trail.",
      ["Godot", "Unreal Engine", "Unity", "Blender"], ["C++", "Collision", "Physics"],
-     ["Game logic", "Modelling", "Animation", "UI / menus"], [], []),
-    ("programming-robotics", "Programming & Robotics", 2, "Learning", "C++ from the ground up, Python for control and hardware that talks back.",
-     ["Python", "C++", "CoppeliaSim", "Arduino IDE"], ["PID control", "LQR control", "ESP32 · LoRa", "Serial comms"],
-     ["Simulation first", "Small daily practice", "Build to learn"], [], []),
+     ["Game logic", "UI / menus"], [], []),
+    ("programming-robotics", "Programming & Robotics", "bot", 2, "Learning", "C++ from the ground up. Hardware that talks back.",
+     ["Python", "C++", "CoppeliaSim", "Arduino IDE"], ["PID", "LQR", "ESP32 · LoRa"],
+     ["Simulate first", "Daily practice"], [], []),
 ]
 
 def notches(n):
     return '<span class="notches" aria-hidden="true">' + "".join(f'<i class="{"f" if i < n else ""}"></i>' for i in range(5)) + '</span>'
 
-def clip_html(c, p=""):
-    slug, title, kind, year, ori = c
-    return f'''<a class="clip {ori} rv" href="{p}{M}{slug}.mp4" data-play="{p}{M}{slug}.mp4" data-title="{esc(title)}" data-poster="{p}{M}{slug}.webp">{video_tile_media(slug, p=p)}<span class="play-ico">▶ Play</span><div class="tile-cap"><h3>{esc(title)}</h3><span class="label">{year}</span><p class="tile-kind">{esc(kind)}</p></div></a>'''
-
 def build_skills():
     cards = ""
     for i, s in enumerate(SKILLS):
-        slug, name, n, lvl, blurb, tools, tech, methods, seen, imgs = s
+        slug, name, icon, n, lvl, blurb, tools, tech, methods, seen, imgs = s
         cards += f'''<a class="charm rv" href="skills/{slug}.html">
-  <span class="label">{i+1:02d}</span>
+  <span class="charm-i">{ico(icon)}</span>
   <h2>{name}</h2>
   <div class="top-r">{notches(n)}<span class="notches-lbl">{lvl}</span><span class="sr">Level: {lvl}, {n} of 5</span></div>
-  <p>{blurb}</p>
   <p class="tools">{" · ".join(tools)}</p>
-  <span class="go" aria-hidden="true">↗</span>
+  <span class="go" aria-hidden="true">{ico("arrow-up-right")}</span>
 </a>'''
-    body = page_head("III", "Craft", "Tools change. <em>Taste</em> compounds.",
-        "These are the skills I’m carrying right now. The filled notches show how much of my build each one takes: a lot of editing, and a growing amount of 3D and code.")
-    body += f'''<section class="wrap cv" style="padding-bottom:clamp(48px,8vw,120px)">
-  <p class="label rv" style="margin-bottom:18px">● = equipped notch · 5 max</p>
-  <div class="charms">{cards}</div>
-</section>''' + chapter_nav("skills.html", "")
-    page("skills.html", "Skills", "Aamir Sheikh’s skills: video editing, motion graphics, Blender 3D, graphic design, frontend, drawing, animation, game development and robotics. Chapter III.", body)
+    body = page_head("III", "Craft", "Tools change. <em>Taste</em> compounds.", "Filled notches = how much of my build each skill takes.", "layers")
+    body += f'''<section class="wrap cv" style="padding-bottom:clamp(48px,8vw,120px)"><div class="charms">{cards}</div></section>''' + chapter_nav("skills.html", "")
+    page("skills.html", "Skills", "Skills of THE AAMIR SHEIKH: video editing, motion graphics, Blender 3D, graphic design, frontend, drawing, animation, game development and robotics. Chapter III.", body)
 
     for i, s in enumerate(SKILLS):
-        slug, name, n, lvl, blurb, tools, tech, methods, seen, imgs = s
+        slug, name, icon, n, lvl, blurb, tools, tech, methods, seen, imgs = s
         li = lambda xs: "".join(f"<li>{esc(x)}</li>" for x in xs)
         extra = ""
         if imgs:
-            figs = "".join(f'<figure class="{"big" if k == 0 else ("sq" if k == 1 else "")} rv"><img src="../{B}{f}" alt="{esc(next(b[2] for b in BLENDER if b[0]==f))}" loading="lazy" decoding="async"><figcaption>{esc(next(b[1] for b in BLENDER if b[0]==f))}</figcaption></figure>' for k, f in enumerate(imgs))
-            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><p class="label">Renders</p><h2 class="h-l">Made in Blender.</h2></div><div class="bgal">{figs}</div></section>'
+            figs = "".join(f'<figure class="{"big" if k == 0 else ("sq" if k == 1 else "")} rv"><img src="../{B}{f}" alt="{esc(next(b[2] for b in BLENDER if b[0]==f))}" loading="lazy" decoding="async" width="1600" height="900"><figcaption>{esc(next(b[1] for b in BLENDER if b[0]==f))}</figcaption></figure>' for k, f in enumerate(imgs))
+            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><p class="label">{ico("image")} Renders</p></div><div class="bgal">{figs}</div></section>'
         if seen:
             clips = "".join(clip_html(CLIP[c], p="../") for c in seen)
-            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><p class="label">Seen in</p><h2 class="h-l">Proof of work.</h2></div><div class="reel-grid">{clips}</div></section>'
+            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><p class="label">{ico("film")} Proof of work</p></div><div class="reel-grid">{clips}</div></section>'
         prev = SKILLS[i - 1]; nxt = SKILLS[(i + 1) % len(SKILLS)]
         body = f'''<section class="wrap page-head">
   <span class="big-num" aria-hidden="true">{i+1:02d}</span>
-  <div class="chapter rv"><span class="roman">III</span><span class="label"><a href="../skills.html" class="link">Skills</a> / {i+1:02d}</span></div>
-  <h1 class="h-xl split-words">{name}</h1>
-  <div class="top-r mt-m rv">{notches(n)}<span class="notches-lbl">{lvl} · {n}/5 notches</span></div>
+  <div class="chapter rv"><span class="roman">{ico(icon)}</span><span class="label"><a href="../skills.html" class="link">Skills</a> / {i+1:02d}</span></div>
+  <h1 class="h-xl split-words slash-in">{name}</h1>
+  <div class="top-r mt-m rv">{notches(n)}<span class="notches-lbl">{lvl} · {n}/5</span></div>
   <p class="lead muted rv rv-d2">{blurb}</p>
 </section>
 <section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
   <div class="kit rv">
-    <div><p class="label">Software &amp; tools</p><ul>{li(tools)}</ul></div>
-    <div><p class="label">Technologies</p><ul>{li(tech)}</ul></div>
-    <div><p class="label">Methods</p><ul>{li(methods)}</ul></div>
+    <div><p class="label">{ico("pen-tool")} Tools</p><ul>{li(tools)}</ul></div>
+    <div><p class="label">{ico("cpu")} Tech</p><ul>{li(tech)}</ul></div>
+    <div><p class="label">{ico("sparkles")} Methods</p><ul>{li(methods)}</ul></div>
   </div>
-  <p class="mt-m rv"><a class="btn" href="../services.html">Hire me for this <span class="arr">→</span></a></p>
+  <p class="mt-m rv"><a class="btn btn--solid" href="../order.html?want={slug}">{ico("shopping-bag")} Order this</a></p>
 </section>
 {extra}
 <section class="wrap section--tight"><ul class="index-list">
-  <li><a href="{nxt[0]}.html"><span class="num">→</span><span class="t">{nxt[1]}</span><span class="d">Next skill</span></a></li>
+  <li><a href="{nxt[0]}.html"><span class="num">{ico("arrow-right")}</span><span class="t">{nxt[1]}</span><span class="d">Next skill</span></a></li>
   <li><a href="{prev[0]}.html"><span class="num">←</span><span class="t">{prev[1]}</span><span class="d">Previous skill</span></a></li>
 </ul></section>'''
-        page(f"skills/{slug}.html", name, f"{name} — tools, technologies and methods Aamir Sheikh uses.", body, current="skills.html", depth=1)
+        page(f"skills/{slug}.html", name, f"{name} — tools, tech and methods THE AAMIR SHEIKH uses.", body, current="skills.html", depth=1)
 
 # ================================================================= WORK
 def build_work():
     clips = "".join(clip_html(c) for c in CLIPS)
     clips2 = "".join(clip_html(c) for c in CLIPS2)
 
-    def mission(id_, tags, num, patch_txt, media, mode, title, role, text, facts, links, flip):
-        dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in facts)
+    def mission(id_, tags, num, media, mode, title, icon, role, line, facts, links, flip):
+        dl = "".join(f"<dt>{ico(fi)} {k}</dt><dd>{v}</dd>" for fi, k, v in facts)
         return f'''<article class="mission{' flip' if flip else ''}" id="{id_}" data-tags="{tags}">
-  <div class="m-media"><div class="frame wipe {mode}">{media}{patch(patch_txt, num)}</div></div>
+  <div class="m-media"><div class="frame wipe {mode}">{media}<span class="m-num" aria-hidden="true">{num}</span></div></div>
   <div class="m-text rv rv-d1">
     <p class="label">Mission {num}</p>
-    <h2>{title}</h2>
+    <h2>{ico(icon)} {title}</h2>
     <p class="role">{role}</p>
-    <div class="prose">{text}</div>
+    <p class="m-line">{line}</p>
     <dl class="facts">{dl}</dl>
     <div class="m-links">{"".join(links)}</div>
   </div>
 </article>'''
 
-    m = mission("sundown-trail", "games", "02", "SUNDOWN TRAIL · WESTERN · IN DEVELOPMENT · ",
-        '<img src="assets/img/sundown-trail-pause.webp" alt="Sundown Trail’s paper-journal pause menu: Resume, Save game, Load game, Settings, Quit to title" loading="lazy" decoding="async">', "",
-        "Sundown Trail", "A western game, built one piece at a time",
-        "<p>Red Dead Redemption 2 made me want to build a world, not just a level. Sundown Trail is my attempt: a frontier game with mid-poly visuals, a paper-journal interface and a lot of dust.</p><p>I’m building it one system at a time: terrain, movement, menus, then the story. The pause menu above is one of the first pieces I finished, and this site’s menu is modelled on it. Press Esc.</p>",
-        [("Status", '<span class="badge-live">In development</span>'), ("Focus", "Game design · UI · Blender environment art"), ("Platform", "Browser first, then Android &amp; iOS"), ("Look", "Mid-poly, 30 fps, baked Blender textures")], [], False)
-    m += mission("echo-balancer", "robotics software", "04", "ECHO BALANCER · eYRC 2026–27 · ",
-        art("echo"), "art-night", "Echo Balancer", "e-Yantra Robotics Competition 2026–27",
-        "<p>The challenge is to keep an unstable robot upright. I’m working through the theme’s tasks in CoppeliaSim, starting with a PID controller and then moving to LQR for smoother, more efficient balancing.</p><p>It’s the most maths I’ve ever enjoyed: every gain I tune shows up right away as a wobble or as stillness.</p>",
-        [("Status", '<span class="badge-live">In progress</span>'), ("Stack", "Python · CoppeliaSim"), ("Control", "PID → LQR"), ("Competition", "eYRC by e-Yantra, IIT Bombay")], [], True)
-    m += mission("robotic-arm", "robotics software", "05", "ARM CONTROL SUITE · SIM TO REAL · ",
-        art("arm"), "art-day", "Arm Control Suite", "Desktop software for my robotic arm",
-        "<p>I have a physical robotic arm with a gripper. I’m writing desktop software that simulates it, works out its motion, shows it in 3D and then sends the same moves to the real arm.</p><p>The goal: test a move on screen, press one button and watch the real arm do it.</p>",
-        [("Status", '<span class="badge-live">In development</span>'), ("Hardware", "Robotic arm + gripper"), ("Firmware", "Arduino IDE"), ("Software", "Simulation · kinematics · 3D view · control")], [], False)
-    m += mission("smart-bin", "robotics software", "06", "SMART BIN · SIH 2026 · TEAM LUMOS · ",
-        art("bin"), "art-night", "Smart Bin", "Smart India Hackathon 2026 — Team LUMOS",
-        "<p>An IoT system for smart waste management. Bins measure how full they are and report over long-range radio, then a priority engine tells collection drivers which bins need them first.</p>",
-        [("Problem", "PS 195 · Smart Waste Management"), ("Hardware", "ESP32-C3 · radar fill sensor · SX1278 LoRa"), ("Backend", "FastAPI · MongoDB priority engine"), ("App", "React Native (Expo) driver app")],
-        ['<a class="btn" href="https://github.com/BachirAfx/WasteFlow" target="_blank" rel="noopener">Code on GitHub <span class="arr">↗</span></a>'], True)
-    m += mission("ninety-days", "software", "07", "90 DAY PROGRESS · ONE THING A DAY · ",
-        art("ninety"), "art-day", "90 Day Progress", "A personal accountability app",
-        "<p>I tend to make big plans and struggle to finish them. So I built a tracker for a 90-day challenge covering academics, programming, projects and skills, with small daily tasks and no overload.</p><p>Progress is saved on your own device, and you can export or import it as JSON.</p>",
-        [("Status", "Live"), ("Stack", "React · TypeScript"), ("Storage", "localStorage · JSON export/import")],
-        ['<a class="btn btn--solid" href="90-day-progress/">Open the app <span class="arr">↗</span></a>'], False)
+    m_sundown = mission("sundown-trail", "games", "02",
+        '<img src="assets/img/sundown-trail-pause.webp" alt="Sundown Trail’s paper-journal pause menu: Resume, Save game, Load game, Settings, Quit to title" loading="lazy" decoding="async" width="780" height="1040">', "",
+        "Sundown Trail", "gamepad-2", "A western, built one system at a time",
+        "RDR2 made me want to build a world, not a level. Press Esc — this site’s menu is modelled on the game’s.",
+        [("flame", "Status", '<span class="badge-live">In development</span>'), ("layers", "Focus", "Game design · UI · Blender environments"), ("globe", "Platform", "Browser → Android &amp; iOS")], [], False)
+    rest = mission("echo-balancer", "robotics software", "04", art("echo"), "art-night", "Echo Balancer", "bot", "e-Yantra Robotics Competition 2026–27",
+        "Keep an unstable robot upright. PID first, then LQR — in CoppeliaSim.",
+        [("flame", "Status", '<span class="badge-live">In progress</span>'), ("code-xml", "Stack", "Python · CoppeliaSim"), ("award", "Competition", "eYRC · IIT Bombay")], [], True)
+    rest += mission("robotic-arm", "robotics software", "05", art("arm"), "art-day", "Arm Control Suite", "cpu", "Desktop software for my robotic arm",
+        "Test a move on screen. Press one button. Watch the real arm do it.",
+        [("flame", "Status", '<span class="badge-live">In development</span>'), ("cpu", "Hardware", "Arm + gripper · Arduino"), ("layers", "Software", "Sim · kinematics · 3D view")], [], False)
+    rest += mission("smart-bin", "robotics software", "06", art("bin"), "art-night", "Smart Bin", "trees", "Smart India Hackathon 2026 — Team LUMOS",
+        "Bins report how full they are over LoRa. A priority engine tells drivers where to go first.",
+        [("award", "Problem", "PS 195 · Smart Waste"), ("cpu", "Hardware", "ESP32-C3 · radar · SX1278"), ("code-xml", "Stack", "FastAPI · MongoDB · React Native")],
+        [f'<a class="btn" href="https://github.com/BachirAfx/WasteFlow" target="_blank" rel="noopener">{ico("code-xml")} Code on GitHub</a>'], True)
+    rest += mission("ninety-days", "software", "07", art("ninety"), "art-day", "90 Day Progress", "trophy", "My accountability app",
+        "Big plans, small daily tasks, no overload. Saved on your own device.",
+        [("zap", "Status", "Live"), ("code-xml", "Stack", "React · TypeScript")],
+        [f'<a class="btn btn--solid" href="90-day-progress/">{ico("arrow-up-right")} Open the app</a>'], False)
 
-    figs = "".join(f'<figure class="{"big" if k == 0 else ("sq" if k == 1 else "")} rv"><img src="{B}{f}" alt="{esc(alt)}" loading="lazy" decoding="async"><figcaption>{esc(cap)}</figcaption></figure>' for k, (f, cap, alt) in enumerate(BLENDER))
+    figs = "".join(f'<figure class="{"big" if k == 0 else ("sq" if k == 1 else "")} rv"><img src="{B}{f}" alt="{esc(alt)}" loading="lazy" decoding="async" width="1600" height="900"><figcaption>{esc(cap)}</figcaption></figure>' for k, (f, cap, alt) in enumerate(BLENDER))
 
     index_rows = [
-        ("01", "Motion Reel 2026", "Motion design · edits · grades", "2026", "#reel", f"{M}meant-to-be-felt.webp"),
-        ("02", "Sundown Trail", "Game · UI · environment", "In dev", "#sundown-trail", "assets/img/sundown-trail-pause.webp"),
-        ("03", "Blender Studies", "3D · lighting · shading", "2026", "#blender", f"{B}blender-2.webp"),
-        ("04", "Echo Balancer", "Robotics · control · eYRC", "2026", "#echo-balancer", "assets/img/art-echo.webp"),
-        ("05", "Arm Control Suite", "Robotics · software", "In dev", "#robotic-arm", "assets/img/art-arm.webp"),
-        ("06", "Smart Bin", "IoT · SIH 2026", "2026", "#smart-bin", "assets/img/art-bin.webp"),
-        ("07", "90 Day Progress", "Software · React", "Live", "#ninety-days", "assets/img/art-ninety.webp"),
+        ("01", "Motion Reel 2026", "film", "Motion · edits · grades", "2026", "#reel", f"{M}money-follows.webp"),
+        ("02", "Sundown Trail", "gamepad-2", "Game · UI", "In dev", "#sundown-trail", "assets/img/sundown-trail-pause.webp"),
+        ("03", "Blender Studies", "box", "3D · lighting", "2026", "#blender", f"{B}blender-2.webp"),
+        ("04", "Echo Balancer", "bot", "Robotics · eYRC", "2026", "#echo-balancer", "assets/img/art-echo.webp"),
+        ("05", "Arm Control Suite", "cpu", "Robotics · software", "In dev", "#robotic-arm", "assets/img/art-arm.webp"),
+        ("06", "Smart Bin", "trees", "IoT · SIH 2026", "2026", "#smart-bin", "assets/img/art-bin.webp"),
+        ("07", "90 Day Progress", "trophy", "Software · React", "Live", "#ninety-days", "assets/img/art-ninety.webp"),
     ]
-    ptable = "".join(f'<li class="rv"><a href="{h}" data-peek="{img}"><span class="n">{n}</span><span class="t">{t}</span><span class="k">{k}</span><span class="y">{y}</span><span class="ar">↘</span></a></li>' for n, t, k, y, h, img in index_rows)
+    ptable = "".join(f'<li class="rv"><a href="{h}" data-peek="{img}"><span class="n">{n}</span><span class="t">{ico(ic)} {t}</span><span class="k">{k}</span><span class="y">{y}</span><span class="ar">{ico("arrow-right")}</span></a></li>' for n, t, ic, k, y, h, img in index_rows)
+    filters = [("all", "All", "layers"), ("motion", "Motion", "film"), ("3d", "3D", "box"), ("games", "Games", "gamepad-2"), ("robotics", "Robotics", "bot"), ("software", "Software", "code-xml")]
+    fhtml = "".join(f'<button type="button" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{ico(i)} {t}</button>' for k, t, i in filters)
 
-    body = page_head("IV", "Missions", "The missions <em>log.</em>",
-        "Motion design, 3D, games, robots and software. Some of these are finished and most are in progress. Hover a film to preview it and click to watch with sound.")
+    body = page_head("IV", "Missions", "The missions <em>log.</em>", "Hover to preview. Click to watch in full quality, with sound.", "clapperboard")
     body += f'''<section class="wrap" style="padding-bottom:clamp(40px,6vw,80px)">
-  <div class="ptable-head label"><span>No.</span><span>Project</span><span class="k">Discipline</span><span>Year</span><span></span></div>
   <ul class="ptable">{ptable}</ul>
 </section>
 <div class="peek" aria-hidden="true"><img alt=""></div>
 <section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
-  <div class="filters" role="group" aria-label="Filter missions">
-    <button type="button" data-filter="all" aria-pressed="true">All</button>
-    <button type="button" data-filter="motion" aria-pressed="false">Motion</button>
-    <button type="button" data-filter="3d" aria-pressed="false">3D</button>
-    <button type="button" data-filter="games" aria-pressed="false">Games</button>
-    <button type="button" data-filter="robotics" aria-pressed="false">Robotics</button>
-    <button type="button" data-filter="software" aria-pressed="false">Software</button>
-  </div>
+  <div class="filters" role="group" aria-label="Filter missions">{fhtml}</div>
   <article class="mission mission--full" id="reel" data-tags="motion">
-    <div class="s-head" style="margin-bottom:clamp(24px,4vw,48px)"><p class="label">Mission 01</p><h2 class="h-xl split-words">Motion Reel 2026</h2><p class="muted rv">Kinetic type, spec ads, title studies, colour grades, tracking and 3D. The newest is “Money Follows”, a vertical ad cut from 4K footage. Every piece started as a single line of text and an idea about how it should feel.</p></div>
+    <div class="s-head"><p class="label">Mission 01</p><h2 class="h-xl split-words">Motion Reel 2026</h2><p class="muted rv">Kinetic type, spec ads, grades, tracking, 3D. Every film plays at its original quality.</p></div>
     <div class="reel-grid">{clips}</div>
     <div class="cat-head"><span class="label">Earlier</span><h2>Edits, grades &amp; 3D</h2></div>
     <div class="reel-grid">{clips2}</div>
   </article>
-  {m.split('<article class="mission flip" id="echo-balancer"')[0]}
+  {m_sundown}
   <article class="mission mission--full" id="blender" data-tags="3d">
-    <div class="s-head" style="margin-bottom:clamp(24px,4vw,48px)"><p class="label">Mission 03</p><h2 class="h-xl split-words">Blender <em>Studies</em></h2><p class="muted rv">Every Blender artist starts with the donut. Mine came with a mug, a spoon and a beam of late-afternoon light, and I kept relighting it to learn how mood changes with one lamp. Then came a walnut table with wood-grain shading and a soft studio floor.</p></div>
+    <div class="s-head"><p class="label">Mission 03</p><h2 class="h-xl split-words">Blender <em>Studies</em></h2><p class="muted rv">The donut, a mug, a walnut table — and one lamp moved a hundred times.</p></div>
     <div class="bgal">{figs}</div>
-    <dl class="facts mt-m rv" style="max-width:640px"><dt>Tool</dt><dd>Blender</dd><dt>Focus</dt><dd>Modelling · shading · lighting · composition</dd><dt>Next</dt><dd>Environment assets for Sundown Trail</dd></dl>
   </article>
-  <article class="mission flip" id="echo-balancer"{m.split('<article class="mission flip" id="echo-balancer"')[1]}
+  {rest}
 </section>
 <div class="rank" aria-hidden="true"><b>D</b><span>Dull</span></div>''' + chapter_nav("projects.html", "")
-    page("projects.html", "Work", "Projects by Aamir Sheikh: a 2026 motion reel, Blender 3D studies, Sundown Trail, eYRC Echo Balancer, robotic arm software, SIH Smart Bin and 90 Day Progress. Chapter IV.", body)
+    page("projects.html", "Work", "Projects by THE AAMIR SHEIKH: a 2026 motion reel, Blender 3D studies, Sundown Trail, eYRC Echo Balancer, robotic arm software, SIH Smart Bin and 90 Day Progress. Chapter IV.", body)
 
 # ================================================================= INSPIRATIONS
-def build_inspirations():
-    def P(title, meta, take, desc="", cls="", id_="", serif=False):
-        idattr = f' id="{id_}"' if id_ else ""
-        h = f'<h3 class="serif-i">{title}</h3>' if serif else f"<h3>{title}</h3>"
-        d = f"<p>{desc}</p>" if desc else ""
-        return f'<article class="panel {cls} rv"{idattr}><span class="speed"></span><p class="label">{meta}</p>{h}{d}<p class="take">{take}</p></article>'
+# key, title, meta, one-liner, image key (assets/img/insp/<key>.webp), size class, motion
+INSP_GAMES = [
+    ("rdr2", "Red Dead Redemption 2", "Game · 2018", "A world that doesn’t need you — so you care about it.", "w8", "pan"),
+    ("stray", "Stray", "Game · 2022", "Tell the story from knee height.", "w4", "zoom"),
+    ("hollow", "Hollow Knight", "Game · 2017", "A tiny palette. A huge sense of place.", "w4", "glow"),
+    ("tomb", "Tomb Raider trilogy", "Games · 2013–18", "Origin stories are about surviving, not winning.", "w4", "pan"),
+    ("spidey", "Marvel’s Spider-Man 2", "Game · 2023", "Movement should feel good before it means anything.", "w4", "swing"),
+    ("nier", "NieR: Automata", "Game · 2017", "The interface can be part of the story.", "w6", "glitch"),
+    ("dmc", "Devil May Cry", "Games · 2001–", "Style is a score. Earn the S rank.", "w6", "slash"),
+    ("stellar", "Stellar Blade", "Game · 2024", "Polish is respect for the player.", "w12", "pan"),
+]
+INSP_FILMS = [
+    ("shawshank", "The Shawshank Redemption", "Film · 1994", "Patience is a plan. So is hope.", "w6", "rain"),
+    ("angry", "12 Angry Men", "Film · 1957", "One room. No wasted frame.", "w6", "zoom"),
+    ("lighthouse", "The Lighthouse", "Film · 2019", "Black, white and grain can be enough.", "w4", "flicker"),
+    ("atonement", "Atonement", "Film · 2007", "One long take can carry a war.", "w4", "pan"),
+    ("fightclub", "Fight Club", "Film · 1999", "Make people look twice.", "w4", "glitch"),
+    ("alien", "Alien — Ripley", "Film · 1979", "Competence is the most heroic trait.", "w4", "scan"),
+    ("mickey", "Mickey 17", "Film · 2025", "Each version of you gets a little better.", "w4", "snow"),
+    ("thunder", "Thunderbolts*", "Film · 2025", "Broken people can still make a team.", "w4", "pan"),
+    ("ff", "The Fantastic Four: First Steps", "Film · 2025", "The future as people once imagined it.", "w6", "flicker"),
+    ("bnd", "Spider-Man: Brand New Day", "Film · 2026", "Starting over isn’t starting from zero.", "w6", "swing"),
+    ("puss", "Puss in Boots: The Last Wish", "Film · 2022", "Painted, and moves like a comic.", "w6", "zoom"),
+    ("aladdin", "Aladdin", "Film · Disney", "Wonder first, logic later.", "w6", "glow"),
+]
+INSP_ANIME = [
+    ("nezha", "Ne Zha", "Animated film · 2019", "Fight the fate people write for you.", "w6", "glow"),
+    ("jiang", "Jiang Ziya", "Animated film · 2020", "Ink, myth and big empty skies.", "w6", "pan"),
+    ("onepiece", "One Piece", "Anime · 1999–", "Find your crew and keep sailing.", "w4", "swing"),
+    ("hxh", "Hunter × Hunter", "Anime · 2011", "Rules make power interesting.", "w4", "zoom"),
+    ("dororo", "Dororo", "Anime · 2019", "Take back what was taken, piece by piece.", "w4", "slash"),
+    ("doro", "Dorohedoro", "Anime · 2020", "Grime and warmth can share a frame.", "w6", "glitch"),
+    ("parasyte", "Parasyte -the maxim-", "Anime · 2014", "Change from the inside is still change.", "w6", "zoom"),
+]
 
-    wolves = f'''<article class="panel w12 wolfpanel rv" id="wolves">
-  <div>
-    <p class="label">00 · The pack · always</p>
-    <h3 class="serif-i" style="font-size:clamp(2.4rem,6vw,5rem);margin:8px 0 18px">Wolves.</h3>
-    <blockquote>“For the strength of the Pack is the Wolf, and the strength of the Wolf is the Pack.”<cite>Rudyard Kipling · The Law of the Jungle · 1894</cite></blockquote>
-    <p class="mt-m" style="max-width:34em">My favourite animal. Wolves are loyal to their pack but still able to walk alone, and they’re patient, smart and loud when it matters. They’re why the footer says “run with the pack”.</p>
-  </div>
+def insp_panel(k, title, meta, line, size, motion, serif=False, id_=""):
+    idattr = f' id="{id_}"' if id_ else ""
+    h = f'<h3 class="serif-i">{title}</h3>' if serif else f"<h3>{title}</h3>"
+    return f'''<article class="ipanel {size} m-{motion} rv"{idattr}>
+  <div class="ip-img"><img src="{I}{k}.webp" alt="" loading="lazy" decoding="async" width="1200" height="800"></div>
+  <div class="ip-fx" aria-hidden="true"></div>
+  <div class="ip-cap"><p class="label">{meta}</p>{h}<p class="take">“{line}”</p></div>
 </article>'''
-    games = "".join([
-        P("Red Dead Redemption 2", "Game · 2018", "A world that doesn’t need you, which is why you care about it.", "The reason Sundown Trail exists. The journal, the pause menu and the patience all come from here.", "w8 dark"),
-        P("Stray", "Game · 2022", "Tell the story with the camera at knee height.", "The cat in the footer is for this one.", "tone", "stray"),
-        P("Hollow Knight", "Game · 2017", "Restraint. A tiny palette and a huge sense of place.", "", "w3"),
-        P("Tomb Raider · Rise · Shadow", "Games · 2013 – 2018", "The best origin stories are about surviving, not winning.", "The struggles chapter is named after this trilogy.", "w3 red"),
-        P("Marvel’s Spider-Man 2", "Game · 2023", "Movement should feel good before it means anything.", "", "w6"),
-        P("NieR: Automata", "Game · 2017", "The interface can be part of the story.", "", "w3 dark"),
-        P("Devil May Cry", "Games · 2001 –", "Style is a score. Earn the S rank.", "Scroll the Work page.", "w3"),
-        P("Stellar Blade", "Game · 2024", "Polish is a form of respect for the player.", "", "w6 tone"),
-    ])
-    films = "".join([
-        P("The Shawshank Redemption", "Film · 1994", "Patience is a plan. So is hope.", "", "w6 dark", serif=True),
-        P("12 Angry Men", "Film · 1957", "One room, one argument, no wasted frame.", "", "w6", serif=True),
-        P("The Lighthouse", "Film · 2019", "Black, white and grain can be enough.", "The film grain on this site is a quiet nod.", "tone", serif=True),
-        P("Atonement", "Film · 2007", "One long take can carry a whole war.", "", "", serif=True),
-        P("Fight Club", "Film · 1999", "Every frame can hide something. Make people look twice.", "", "dark", serif=True),
-        P("Alien — Ripley", "Film · 1979", "Competence is the most heroic trait.", "Hence the green terminal at the bottom of each page.", "", serif=True),
-        P("Mickey 17", "Film · 2025", "Each version of you gets a little better.", "", "red", serif=True),
-        P("Thunderbolts*", "Film · 2025", "Broken people can still make a team.", "", "", serif=True),
-        P("The Fantastic Four: First Steps", "Film · 2025", "Retro-futurism. The future as people once imagined it.", "The mission patches come from here.", "w6 tone", serif=True),
-        P("Spider-Man: Brand New Day", "Film · 2026", "Starting over isn’t the same as starting from zero.", "", "w6 dark", serif=True),
-        P("Puss in Boots: The Last Wish", "Film · 2022", "Animation that looks painted and moves like a comic.", "", "w6", serif=True),
-        P("Aladdin", "Film · Disney", "Wonder first, logic later.", "", "w6 tone", serif=True),
-    ])
-    anim = "".join([
-        P("Ne Zha", "Animated film · 2019", "Fight the fate people write for you.", "", "w6 red"),
-        P("Jiang Ziya", "Animated film · 2020", "Ink, myth and big empty skies.", "", "w6 dark"),
-        P("One Piece", "Anime · 1999 –", "Find your crew and keep sailing.", "", "tone"),
-        P("Hunter × Hunter", "Anime · 2011", "Rules make power interesting.", "", ""),
-        P("Dororo", "Anime · 2019", "Get back what was taken from you, one piece at a time.", "", "dark"),
-        P("Dorohedoro", "Anime · 2020", "Grime and warmth can share a frame.", "", "w6"),
-        P("Parasyte -the maxim-", "Anime · 2014", "Change from the inside is still change.", "", "w6 tone"),
-    ])
+
+def build_inspirations():
+    games = "".join(insp_panel(*x, id_=("stray" if x[0] == "stray" else "")) for x in INSP_GAMES)
+    films = "".join(insp_panel(*x, serif=True) for x in INSP_FILMS)
+    anim = "".join(insp_panel(*x) for x in INSP_ANIME)
+    wolves = f'''<article class="ipanel w12 tall m-pan wolfpanel rv" id="wolves">
+  <div class="ip-img"><img src="{I}wolves.webp" alt="A pack of wolves walking through snowy forest" loading="lazy" decoding="async" width="1600" height="1000"></div>
+  <div class="ip-fx" aria-hidden="true"></div>
+  <div class="ip-cap"><p class="label">{ico("heart")} 00 · The pack · always</p>
+    <h3 class="serif-i wolf-h">Wolves.</h3>
+    <blockquote>“For the strength of the Pack is the Wolf, and the strength of the Wolf is the Pack.”<cite>Rudyard Kipling · 1894</cite></blockquote></div>
+</article>'''
     people = f'''
-<article class="panel has-img w6 rv" style="min-height:340px"><img src="assets/img/mackesy-1.webp" alt="Charlie Mackesy illustration backdrop from The Boy, the Mole, the Fox and the Horse" loading="lazy"><div class="cap"><p class="label">Book &amp; film · Charlie Mackesy</p><h3>The Boy, the Mole, the Fox &amp; the Horse</h3></div></article>
-<article class="panel w6 rv"><span class="speed"></span><p class="label">People who build quietly</p><h3 class="serif-i">Charlie Mackesy</h3><p>Inspired by people who show up every day and build quietly. A few lines of ink and a kind sentence can carry more than a blockbuster.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto"><img src="assets/img/mackesy-2.webp" alt="" loading="lazy" style="aspect-ratio:3/2;object-fit:cover;filter:grayscale(1)"><img src="assets/img/mackesy-3.webp" alt="" loading="lazy" style="aspect-ratio:3/2;object-fit:cover;filter:grayscale(1)"></div></article>
-<a class="panel has-img w8 rv" href="{M}chalamet-edit.mp4" data-play="{M}chalamet-edit.mp4" data-title="Chalamet — fan edit" data-poster="assets/img/chalamet.webp" style="min-height:340px"><img src="assets/img/chalamet.webp" alt="Timothée Chalamet wallpaper" loading="lazy"><div class="cap"><p class="label">Actor · ▶ watch my edit</p><h3><s style="opacity:.6">Less noise, more meaning.</s> More noise, more meaning.</h3></div></a>
-<article class="panel w4 red rv"><span class="speed"></span><p class="label">Design studio</p><h3>Pentagram</h3><p>The reason this site looks the way it does: big type, a strict grid and letting the work speak. Then I broke a few of the rules.</p><p class="take">Hierarchy is kindness.</p></article>
+<article class="ipanel w6 m-pan rv"><div class="ip-img"><img src="assets/img/mackesy-1.webp" alt="" loading="lazy" width="1200" height="800"></div><div class="ip-fx" aria-hidden="true"></div><div class="ip-cap"><p class="label">Book &amp; film · Charlie Mackesy</p><h3>The Boy, the Mole, the Fox &amp; the Horse</h3><p class="take">“A few lines of ink can carry more than a blockbuster.”</p></div></article>
+<a class="ipanel w6 m-zoom rv" href="{M}chalamet-edit.mp4" {play_attrs("chalamet-edit")}><div class="ip-img"><img src="assets/img/chalamet.webp" alt="" loading="lazy" width="1200" height="800"></div><div class="ip-fx" aria-hidden="true"></div><div class="ip-cap"><p class="label">{ico("play")} Actor · watch my edit</p><h3>Timothée Chalamet</h3><p class="take">“More noise, more meaning.”</p></div></a>
+<article class="ipanel w12 m-slash rv solid"><div class="ip-cap"><p class="label">Design studio</p><h3>Pentagram</h3><p class="take">“Hierarchy is kindness.”</p></div></article>
 '''
-    body = page_head("V", "Inspirations", "Everything I love <em>leaves a mark.</em>",
-        "These are the animals, games, films, anime and people I keep coming back to, along with the one thing I took from each. You’ll find small nods to most of them hidden around this site.")
+    body = page_head("V", "Inspirations", "Everything I love <em>leaves a mark.</em>", "One line I took from each. Small nods are hidden all over this site.", "heart")
     body += f'''<section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
-  <div class="panels">{wolves}</div>
-  <div class="cv"><div class="cat-head"><span class="label">01</span><h2>Games</h2></div><div class="panels">{games}</div></div>
-  <div class="cv"><div class="cat-head"><span class="label">02</span><h2>Films</h2></div><div class="panels">{films}</div></div>
-  <div class="cv"><div class="cat-head"><span class="label">03</span><h2>Anime &amp; animation</h2></div><div class="panels">{anim}</div></div>
-  <div class="cv"><div class="cat-head"><span class="label">04</span><h2>People</h2></div><div class="panels">{people}</div></div>
+  <div class="ipanels">{wolves}</div>
+  <div class="cv"><div class="cat-head"><span class="label">{ico("gamepad-2")} 01</span><h2>Games</h2></div><div class="ipanels">{games}</div></div>
+  <div class="cv"><div class="cat-head"><span class="label">{ico("film")} 02</span><h2>Films</h2></div><div class="ipanels">{films}</div></div>
+  <div class="cv"><div class="cat-head"><span class="label">{ico("sparkles")} 03</span><h2>Anime &amp; animation</h2></div><div class="ipanels">{anim}</div></div>
+  <div class="cv"><div class="cat-head"><span class="label">{ico("heart")} 04</span><h2>People</h2></div><div class="ipanels">{people}</div></div>
   <p class="pull split-words mt-l">Feel the <em>silence</em>.</p>
+  <p class="mini muted mt-m">Mood photos from Unsplash — see <a class="link" href="credits.html">credits</a>. Titles belong to their creators.</p>
 </section>''' + chapter_nav("inspirations.html", "")
-    page("inspirations.html", "Inspirations", "The wolves, games, films, anime and people that inspire Aamir Sheikh’s work, from Red Dead Redemption 2 to The Lighthouse to One Piece. Chapter V.", body)
+    page("inspirations.html", "Inspirations", "The wolves, games, films, anime and people that inspire THE AAMIR SHEIKH. Chapter V.", body)
 
 # ================================================================= SERVICES
+SERVICES = [
+    # group, icon, items
+    ("Video editing", "scissors", ["Reels / Shorts", "YouTube edit", "Ad / promo", "Colour grading", "Motion tracking"]),
+    ("Motion graphics", "sparkles", ["Kinetic typography", "Logo animation", "Title sequence", "Explainer video"]),
+    ("3D", "box", ["Product render", "3D model", "3D animation"]),
+    ("Design", "pen-tool", ["Poster", "Thumbnail", "Logo", "Social posts"]),
+    ("Web", "code-xml", ["Portfolio site", "Landing page", "Fix / speed up my site"]),
+    ("Games", "gamepad-2", ["Game UI / menus", "Prototype"]),
+    ("Robotics & code", "bot", ["Arduino / ESP32", "Python script", "Simulation"]),
+]
+
 def build_services():
-    body = page_head("VI", "Side quests", "Side quests <em>welcome.</em>",
-        "I take on a small number of freelance projects alongside my studies. If you have a story to tell, a product to show or a site that needs to exist, let’s talk.")
-    body += '''<section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
-  <ul class="offer">
-    <li class="rv"><span class="n">01</span><h3>Video editing</h3><p>Reels, ads, YouTube and short films: the cut, colour grade, sound and pacing. Tools: Premiere Pro, After Effects, DaVinci Resolve.</p></li>
-    <li class="rv"><span class="n">02</span><h3>Motion graphics</h3><p>Kinetic typography, title sequences, logo animations and spec ads. See the <a class="link" href="projects.html#reel">motion reel</a>.</p></li>
-    <li class="rv"><span class="n">03</span><h3>3D renders</h3><p>Product shots and small scenes in Blender: modelling, shading and lighting. See the <a class="link" href="projects.html#blender">Blender studies</a>.</p></li>
-    <li class="rv"><span class="n">04</span><h3>Web design &amp; development</h3><p>Fast, hand-coded sites with a clear hierarchy, a little personality, and light and dark modes, like this one.</p></li>
-  </ul>
+    cards = "".join(f'''<li class="svc rv"><span class="svc-i">{ico(icon)}</span><h3>{g}</h3><ul>{"".join(f"<li>{esc(x)}</li>" for x in items)}</ul>
+<a class="btn btn--small" href="order.html?want={re.sub(r"[^a-z0-9]+", "-", g.lower()).strip("-")}">{ico("shopping-bag")} Order</a></li>''' for g, icon, items in SERVICES)
+    steps = [("message-circle", "Brief", "Goal, audience, deadline."), ("pen-tool", "Board", "References + direction."), ("zap", "Build", "Progress + 2 revisions."), ("send", "Deliver", "Final files + project files.")]
+    shtml = "".join(f'<div class="rv"><span class="st-i">{ico(i)}</span><p class="label">Step {k+1}</p><h3>{t}</h3><p>{d}</p></div>' for k, (i, t, d) in enumerate(steps))
+    body = page_head("VI", "Side quests", "Side quests <em>welcome.</em>", "A few freelance projects alongside my studies.", "sparkles")
+    body += f'''<section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)"><ul class="svcs">{cards}</ul></section>
+<section class="wrap section cv" style="padding-top:0">
+  <div class="s-head"><p class="label">{ico("layers")} How it works</p><h2 class="h-l split-words">Four steps. No surprises.</h2></div>
+  <div class="steps">{shtml}</div>
 </section>
 <section class="wrap section cv" style="padding-top:0">
-  <div class="s-head"><p class="label">How it works</p><h2 class="h-l split-words">Four steps. No surprises.</h2></div>
-  <div class="steps">
-    <div class="rv"><p class="label">Step 1</p><h3>Brief</h3><p>You tell me the goal, the audience and the deadline. I ask the annoying questions.</p></div>
-    <div class="rv rv-d1"><p class="label">Step 2</p><h3>Board</h3><p>References, a rough storyboard or wireframe, and an agreed direction before I build anything.</p></div>
-    <div class="rv rv-d2"><p class="label">Step 3</p><h3>Build</h3><p>I make it and share progress, with two rounds of revisions included.</p></div>
-    <div class="rv rv-d3"><p class="label">Step 4</p><h3>Deliver</h3><p>Final files in the formats you need, and the project files if you want them.</p></div>
-  </div>
-</section>
-<section class="wrap section cv" style="padding-top:0">
-  <div class="s-head"><p class="label">The case</p><h2 class="h-l split-words">Why work with me. <em>Three exhibits.</em></h2></div>
-  <ul class="offer">
-    <li class="rv"><span class="n">A</span><h3>Two languages</h3><p>I speak both design and code, so the thing you approve is the thing that ships.</p></li>
-    <li class="rv"><span class="n">B</span><h3>Obsessive about feel</h3><p>Years of games and films taught me that timing is everything. I sweat the frames.</p></li>
-    <li class="rv"><span class="n">C</span><h3>Honest</h3><p>Clear timelines, clear limits. If it isn’t my strength, I’ll tell you.</p></li>
+  <ul class="quests">
+    <li class="rv">{ico("code-xml")}<h3>Design + code</h3><p>What you approve is what ships.</p></li>
+    <li class="rv">{ico("clock")}<h3>Obsessed with timing</h3><p>I sweat the frames.</p></li>
+    <li class="rv">{ico("check")}<h3>Honest</h3><p>Clear timelines, clear limits.</p></li>
   </ul>
 </section>
 ''' + epilogue("", "Let’s make something <em>worth watching</em>.")
-    page("services.html", "Services", "Hire Aamir Sheikh for video editing, motion graphics, Blender 3D renders and web design and development. Chapter VI.", body)
+    page("services.html", "Services", "Hire THE AAMIR SHEIKH for video editing, motion graphics, Blender 3D, design, web, games and robotics. Chapter VI.", body)
+
+# ================================================================= ORDER + FEEDBACK
+def build_order():
+    groups = ""
+    for g, icon, items in SERVICES:
+        gid = re.sub(r"[^a-z0-9]+", "-", g.lower()).strip("-")
+        chips = "".join(f'<label class="chip"><input type="checkbox" name="svc" value="{esc(g)} → {esc(x)}" data-group="{gid}"><span>{esc(x)}</span></label>' for x in items)
+        groups += f'<fieldset class="og" data-group-box="{gid}"><legend>{ico(icon)} {g}</legend><div class="chips">{chips}</div></fieldset>'
+    likes = "".join(f'<label class="chip chip--img"><input type="checkbox" name="like" value="{esc(c[1])}" data-slug="{c[0]}"><span><img src="{M}{c[0]}.webp" alt="" loading="lazy" width="160" height="90">{esc(c[1])}</span></label>' for c in CLIPS + CLIPS2)
+    budget = "".join(f'<label class="chip"><input type="radio" name="budget" value="{b}"><span>{b}</span></label>' for b in ["Under ₹2k", "₹2k–5k", "₹5k–15k", "₹15k+", "Let’s talk"])
+    when = "".join(f'<label class="chip"><input type="radio" name="when" value="{b}"><span>{b}</span></label>' for b in ["ASAP", "1 week", "2–4 weeks", "Flexible"])
+    stars = "".join(f'<label class="star"><input type="radio" name="rating" value="{n}"><span aria-hidden="true">{ico("star")}</span><span class="sr">{n} star{"s" if n > 1 else ""}</span></label>' for n in range(1, 6))
+    fb_like = "".join(f'<label class="chip"><input type="checkbox" name="liked" value="{b}"><span>{b}</span></label>' for b in ["Design", "Videos", "Music", "Interfaces", "Accessibility", "Speed", "Story"])
+    send_btns = lambda kind: f'''<div class="send-row">
+  <button type="submit" class="btn btn--solid" data-send="whatsapp">{ico("message-circle")} Send on WhatsApp</button>
+  <button type="submit" class="btn" data-send="email">{ico("mail")} Send to Gmail</button>
+</div>
+<p class="form-status" role="status" aria-live="polite"></p>'''
+    body = page_head("VII", "Order &amp; feedback", "Pick it. <em>Send it.</em>", "Tap what you want. It arrives on my WhatsApp and Gmail, neatly formatted.", "shopping-bag")
+    body += f'''<section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
+  <div class="tabs" role="tablist" aria-label="Form type">
+    <button role="tab" id="tab-order" aria-controls="p-order" aria-selected="true" type="button">{ico("shopping-bag")} Order</button>
+    <button role="tab" id="tab-fb" aria-controls="feedback" aria-selected="false" tabindex="-1" type="button">{ico("star")} Feedback</button>
+  </div>
+
+  <form class="oform" id="p-order" role="tabpanel" aria-labelledby="tab-order" data-form="order" novalidate>
+    <div class="step-h"><b>1</b><h2>What do you want?</h2><p class="mini muted">Pick as many as you like.</p></div>
+    <div class="ogs">{groups}</div>
+
+    <div class="step-h"><b>2</b><h2>Like any of these?</h2><p class="mini muted">Optional — tap a film you want something similar to.</p></div>
+    <div class="chips chips--img">{likes}</div>
+
+    <div class="step-h"><b>3</b><h2>Budget &amp; timing</h2></div>
+    <fieldset class="og"><legend>{ico("shopping-bag")} Budget</legend><div class="chips">{budget}</div></fieldset>
+    <fieldset class="og"><legend>{ico("clock")} When</legend><div class="chips">{when}</div></fieldset>
+
+    <div class="step-h"><b>4</b><h2>About you</h2></div>
+    <div class="fields">
+      <label class="fld"><span>Name *</span><input name="name" autocomplete="name" required></label>
+      <label class="fld"><span>Phone or email *</span><input name="contact" autocomplete="email" required></label>
+      <label class="fld wide"><span>Anything else?</span><textarea name="details" rows="4" placeholder="Links, ideas, deadline…"></textarea></label>
+    </div>
+    <div class="summary" aria-live="polite"><p class="label">{ico("check")} Your order</p><pre data-summary>Nothing picked yet.</pre></div>
+    {send_btns("order")}
+  </form>
+
+  <form class="oform" id="feedback" role="tabpanel" aria-labelledby="tab-fb" data-form="feedback" hidden novalidate>
+    <div class="step-h"><b>1</b><h2>How was it?</h2></div>
+    <fieldset class="stars"><legend class="sr">Rating out of 5</legend>{stars}</fieldset>
+    <div class="step-h"><b>2</b><h2>What did you like?</h2></div>
+    <div class="chips">{fb_like}</div>
+    <div class="step-h"><b>3</b><h2>Tell me more</h2></div>
+    <div class="fields">
+      <label class="fld wide"><span>What should I improve?</span><textarea name="details" rows="4"></textarea></label>
+      <label class="fld"><span>Name (optional)</span><input name="name" autocomplete="name"></label>
+      <label class="fld"><span>Contact (optional)</span><input name="contact" autocomplete="email"></label>
+    </div>
+    <div class="summary" aria-live="polite"><p class="label">{ico("check")} Your feedback</p><pre data-summary>…</pre></div>
+    {send_btns("feedback")}
+  </form>
+  <p class="mini muted mt-m">WhatsApp opens with your message ready — just press send. Gmail sends straight from this page.</p>
+</section>''' + chapter_nav("order.html", "")
+    page("order.html", "Order & Feedback", "Order video edits, motion graphics, 3D, design, web, games or robotics from THE AAMIR SHEIKH — or leave feedback. Sent to WhatsApp and Gmail.", body)
+
+# ================================================================= CREDITS
+CREDITS_MUSIC = [
+    ("Electric Guitar (Riot)", "Strong Character — LightStockMusic", "https://pixabay.com/music/main-title-strong-character-powerful-fuzz-action-sport-rock-513742/"),
+    ("Smooth Jazz (Noir)", "Smooth Instrumental Jazz Music — Tunetank", "https://pixabay.com/music/vintage-smooth-instrumental-jazz-music-349777/"),
+    ("Ambient Village (Village)", "Village ambient textures, soft cowbells — DesiFreeMusic", "https://pixabay.com/music/ambient-village-ambient-textures-soft-cowbells-377886/"),
+]
+
+def build_credits():
+    photos = json.load(open(os.path.join(ROOT, "_build", "photo_credits.json"))) if os.path.exists(os.path.join(ROOT, "_build", "photo_credits.json")) else {}
+    mus = "".join(f'<li>{ico("disc-3")} <b>{a}</b> — <a class="link" href="{u}" target="_blank" rel="noopener">{esc(t)}</a> (Pixabay Content License)</li>' for a, t, u in CREDITS_MUSIC)
+    ph = "".join(f'<li><a class="link" href="https://unsplash.com/photos/{v}" target="_blank" rel="noopener">{esc(k)}</a></li>' for k, v in photos.items())
+    body = page_head("✦", "Credits", "Thank <em>you.</em>", "Free, properly licensed resources used on this site.", "award")
+    body += f'''<section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
+  <div class="kit">
+    <div><p class="label">{ico("headphones")} Music</p><ul class="credit-l">{mus}</ul></div>
+    <div><p class="label">{ico("image")} Photos — Unsplash License</p><ul class="credit-l cols">{ph}</ul></div>
+    <div><p class="label">{ico("sparkles")} Also</p><ul class="credit-l"><li>Icons: Lucide (ISC)</li><li>Fonts: Anton, Instrument Serif, Space Grotesk, Caveat (Google Fonts, OFL)</li><li>Video player: hls.js (Apache-2.0)</li><li>Sound effects: synthesised live in your browser</li><li>Drift footage © 19Bozzy92</li></ul></div>
+  </div>
+</section>'''
+    page("credits.html", "Credits", "Music, photo, icon and font credits for theaamirsheikh.com.", body, current="credits.html")
 
 # ================================================================= 404
 def build_404():
     body = f'''<section class="wrap lost">
   <div>
-    <p class="label label--red">Error 404</p>
-    <h1 class="mega mt-s" style="font-family:var(--f-serif);font-weight:400;font-style:italic">Lost from the pack.</h1>
-    <p class="lead muted mt-m" style="margin-inline:auto">This page doesn’t exist, or it got cut in the edit.</p>
-    <p class="mt-m"><a class="btn" href="/">Find the pack <span class="arr">→</span></a></p>
+    <p class="label">{ico("skull")} Error 404</p>
+    <h1 class="mega mt-s">Lost from the pack.</h1>
+    <p class="lead muted mt-m" style="margin-inline:auto">This page got cut in the edit.</p>
+    <p class="mt-m"><a class="btn btn--solid" href="/">{ico("house")} Find the pack</a></p>
   </div>
 </section>'''
-    doc = head("Lost", "Page not found.", "404.html", "/") + '<body>\n' + header("", "/") + pause_menu("", "/") + f'<main id="main">{body}</main>\n' + footer("/") + "</body>\n</html>\n"
+    doc = head("Lost", "Page not found.", "404.html", "/") + '<body>\n' + header("", "/") + pause_menu("", "/") + settings_panel() + f'<main id="main" tabindex="-1">{body}</main>\n' + footer("/") + "</body>\n</html>\n"
     with open(os.path.join(ROOT, "404.html"), "w", encoding="utf-8") as f: f.write(doc)
     print("wrote 404.html")
 
-def export_art_sources():
-    """Writes standalone SVGs for the Work-page hover previews (rendered to .webp by a helper)."""
-    os.makedirs(os.path.join(ROOT, "_build", "art"), exist_ok=True)
-    vars_day = "--a-bg:#e5dfd2;--a-ink:#15130f;--a-mute:#5c564d;--a-grid:rgba(21,19,15,.12);--a-red:#b8231f"
-    vars_night = "--a-bg:#0c0b0a;--a-ink:#ece6da;--a-mute:#a59e92;--a-grid:rgba(236,230,218,.08);--a-red:#e2483d"
-    for n in ("echo", "arm", "bin", "ninety"):
-        v = vars_night if ART_MODE[n] == "art-night" else vars_day
-        svg = art(n).replace("<svg ", f'<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" style="{v}" ', 1)
-        with open(os.path.join(ROOT, "_build", "art", f"art-{n}.svg"), "w") as f: f.write(svg)
+def write_sitemap():
+    pages = ["", "purpose.html", "struggles.html", "skills.html", "projects.html", "inspirations.html", "services.html", "order.html", "credits.html", "90-day-progress/"] + [f"skills/{s[0]}.html" for s in SKILLS]
+    urls = "".join(f"<url><loc>{SITE}/{p}</loc></url>" for p in pages)
+    open(os.path.join(ROOT, "sitemap.xml"), "w").write(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
+
+def write_i18n():
+    import i18n
+    data = i18n.build_js()
+    js = "/* Translations (EN → DE / FR / JA). Generated from _build/i18n.py */\nwindow.TAS_I18N=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
+    open(os.path.join(ROOT, "assets", "js", "i18n.js"), "w", encoding="utf-8").write(js)
+    print("wrote assets/js/i18n.js", sum(len(v) for v in data.values()), "strings")
 
 if __name__ == "__main__":
-    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_404(); export_art_sources()
+    import sys; sys.path.insert(0, os.path.join(ROOT, "_build")); write_i18n()
+    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_404(); write_sitemap()

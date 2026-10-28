@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 760" role="img" aria-label="Original illustration: a slender girl in black techwear with pink-tipped hair, headphones and a katana resting on her shoulder">
+  <title>Riot — original character, THE AAMIR SHEIKH</title>
+  <defs>
+    <style>.o{stroke:#0b0b0d;stroke-width:4;stroke-linejoin:round;stroke-linecap:round}.t{stroke:#0b0b0d;stroke-width:2.6;stroke-linecap:round;fill:none}</style>
+    <pattern id="ht" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.4" fill="#0b0b0d" opacity=".45"/></pattern>
+  </defs>
+
+  <!-- katana blade behind body: hilt in right hand, blade over the shoulder -->
+  <line x1="262" y1="214" x2="70" y2="20" stroke="#0b0b0d" stroke-width="15" stroke-linecap="round"/>
+  <line x1="258" y1="210" x2="74" y2="24" stroke="#e9e6df" stroke-width="9" stroke-linecap="round"/>
+  <line x1="250" y1="196" x2="80" y2="24" stroke="#ffffff" stroke-width="2.5"/>
+
+  <!-- back hair -->
+  <path class="o" fill="#16161c" d="M122 104 Q116 30 182 26 Q248 30 242 106 L250 188 Q240 208 222 198 L216 150 L148 150 L142 198 Q124 208 114 188 Z"/>
+  <path fill="#ff0054" d="M116 176 Q124 204 142 196 L145 172 Q130 178 117 166 Z M248 176 Q240 204 222 196 L219 172 Q234 178 247 166 Z"/>
+
+  <!-- neck -->
+  <path class="o" fill="#e8b996" d="M168 166 L167 198 Q180 208 193 198 L192 166 Z"/>
+  <path d="M168 176 Q180 190 192 176 L192 168 L168 168 Z" fill="#c9926f"/>
+
+  <!-- face (bigger, softer chin) -->
+  <path class="o" fill="#f2c9a9" d="M138 100 Q138 56 180 54 Q222 56 222 100 L220 132 Q214 170 180 178 Q146 170 140 132 Z"/>
+  <ellipse cx="154" cy="138" rx="10" ry="5" fill="#ff7aa0" opacity=".5"/>
+  <ellipse cx="206" cy="138" rx="10" ry="5" fill="#ff7aa0" opacity=".5"/>
+  <!-- sharp anime eyes -->
+  <path d="M146 118 Q158 106 174 116 L172 122 Q160 116 148 124 Z" fill="#0b0b0d"/>
+  <path d="M214 118 Q202 106 186 116 L188 122 Q200 116 212 124 Z" fill="#0b0b0d"/>
+  <ellipse cx="161" cy="126" rx="7" ry="8.5" fill="#ff0054"/><ellipse cx="161" cy="127" rx="3.8" ry="5.5" fill="#0b0b0d"/><circle cx="158" cy="122" r="2.4" fill="#fff"/>
+  <ellipse cx="199" cy="126" rx="7" ry="8.5" fill="#ff0054"/><ellipse cx="199" cy="127" rx="3.8" ry="5.5" fill="#0b0b0d"/><circle cx="196" cy="122" r="2.4" fill="#fff"/>
+  <path d="M150 104 L171 100 M189 100 L210 104" stroke="#0b0b0d" stroke-width="3.5" stroke-linecap="round"/>
+  <path class="t" d="M180 134 L177 145 L182 146"/>
+  <path d="M168 157 Q178 162 192 153" stroke="#b5284c" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- small plaster on cheek (Gachiakuta grit) -->
+  <rect x="200" y="146" width="14" height="7" rx="2" fill="#fff" stroke="#0b0b0d" stroke-width="2" transform="rotate(-18 207 150)"/>
+
+  <!-- fringe -->
+  <path class="o" fill="#16161c" d="M134 110 Q128 46 182 44 Q236 46 228 112 L218 92 L210 114 L198 86 L188 116 L176 86 L166 114 L156 90 L146 116 Z"/>
+  <path d="M164 54 Q192 46 214 64" stroke="#3a3a46" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- headphones -->
+  <path class="o" fill="none" d="M126 112 Q124 20 182 16 Q240 20 236 112" stroke-width="7"/>
+  <rect class="o" x="115" y="100" width="22" height="42" rx="9" fill="#9eff00"/>
+  <rect class="o" x="223" y="100" width="22" height="42" rx="9" fill="#9eff00"/>
+
+  <!-- jacket: shoulders wide, waist narrow -->
+  <path class="o" fill="#1d1d24" d="M130 218 Q136 198 166 192 L180 210 L194 192 Q224 198 230 218 L222 300 Q200 310 180 308 Q160 310 138 300 Z"/>
+  <path class="o" fill="#ff0054" d="M167 194 L180 212 L193 194 L190 290 L170 290 Z"/>
+  <path d="M136 230 L220 296" stroke="#9eff00" stroke-width="7"/>
+  <path d="M136 230 L220 296" stroke="#0b0b0d" stroke-width="2" stroke-dasharray="2 9"/>
+  <rect class="o" x="172" y="258" width="20" height="14" rx="2" fill="#bdbab3"/>
+  <path d="M132 222 L140 300 L150 300 L144 224 Z" fill="url(#ht)"/>
+  <!-- bare midriff -->
+  <path class="o" fill="#f2c9a9" d="M140 300 Q160 310 180 308 Q200 310 220 300 L222 322 L138 322 Z"/>
+
+  <!-- left arm: relaxed, hand on hip -->
+  <path class="o" fill="#1d1d24" d="M132 220 Q112 236 108 270 Q106 300 126 330 L140 320 Q126 296 128 272 Q130 252 142 240 Z"/>
+  <path d="M110 272 L130 276" stroke="#ff0054" stroke-width="5"/>
+  <path class="o" fill="#f2c9a9" d="M124 324 Q134 316 144 324 L144 340 Q132 346 124 338 Z"/>
+  <!-- right arm: bent up to the hilt at the shoulder -->
+  <path class="o" fill="#1d1d24" d="M228 218 Q252 230 258 262 L236 272 Q236 252 222 240 Z"/>
+  <path class="o" fill="#1d1d24" d="M236 272 L258 262 Q276 244 274 222 L254 218 Q256 238 236 256 Z"/>
+  <path d="M240 254 L256 264" stroke="#ff0054" stroke-width="5"/>
+  <!-- hilt (in front of hand) -->
+  <line x1="262" y1="214" x2="300" y2="252" stroke="#0b0b0d" stroke-width="16" stroke-linecap="round"/>
+  <line x1="264" y1="216" x2="298" y2="250" stroke="#ff0054" stroke-width="10" stroke-linecap="round"/>
+  <path d="M272 224 l6 -6 M282 234 l6 -6 M292 244 l6 -6" stroke="#0b0b0d" stroke-width="2.5"/>
+  <line x1="248" y1="216" x2="266" y2="198" stroke="#0b0b0d" stroke-width="12" stroke-linecap="round"/>
+  <line x1="249" y1="215" x2="265" y2="199" stroke="#9eff00" stroke-width="6" stroke-linecap="round"/>
+  <path class="o" fill="#f2c9a9" d="M256 206 Q270 198 282 210 L278 228 Q264 234 256 222 Z"/>
+
+  <!-- low-slung belt -->
+  <path class="o" fill="#0b0b0d" d="M136 318 L224 318 L226 334 L134 334 Z"/>
+  <rect x="172" y="320" width="16" height="12" rx="2" fill="#9eff00"/>
+  <path d="M206 334 L214 380" stroke="#ff0054" stroke-width="4"/>
+
+  <!-- legs: tapered cargo pants, weight on one leg -->
+  <path class="o" fill="#26262e" d="M136 332 L180 332 L178 360 L170 470 L162 600 L136 600 L134 470 Q128 400 136 332 Z"/>
+  <path class="o" fill="#26262e" d="M180 332 L226 332 Q236 400 228 470 L232 600 L206 600 L194 470 L182 360 Z"/>
+  <path d="M138 340 Q132 400 136 470 L138 600 L146 600 L144 470 Q140 400 146 340 Z" fill="url(#ht)"/>
+  <rect class="o" x="136" y="410" width="26" height="36" rx="3" fill="#1d1d24"/>
+  <rect class="o" x="202" y="410" width="26" height="36" rx="3" fill="#1d1d24"/>
+  <path d="M140 516 L166 520 M200 520 L228 516" stroke="#ff0054" stroke-width="6"/>
+
+  <!-- boots -->
+  <path class="o" fill="#0f0f13" d="M134 594 L164 594 L166 680 L174 694 L166 712 L112 712 Q110 694 128 684 Z"/>
+  <path class="o" fill="#0f0f13" d="M204 594 L234 594 L238 684 Q256 694 252 712 L198 712 L192 694 L200 680 Z"/>
+  <rect x="112" y="703" width="62" height="9" fill="#9eff00"/>
+  <rect x="192" y="703" width="62" height="9" fill="#9eff00"/>
+  <path d="M138 618 L162 618 M138 636 L162 636 M206 618 L230 618 M206 636 L230 636" stroke="#5a5a66" stroke-width="3"/>
+
+  <ellipse cx="182" cy="726" rx="96" ry="9" fill="#0b0b0d" opacity=".22"/>
+</svg>

@@ -1,5 +1,7 @@
-# Raw/source files — too big for GitHub (100 MB limit) and not needed online
 _source_media/
 _private/
 _old_site_backup/
+.wrangler/
 .DS_Store
+._*
+assets/media/money follows*.mp4
