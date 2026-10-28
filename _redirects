@@ -1,0 +1,13 @@
+# Old (uppercase) URLs from the first version of the site → new pages.
+# Netlify only applies these when no file exists at the path, so they can't loop.
+/INDEX.HTML          /                   301
+/PURPOSE.HTML        /purpose.html       301
+/SERVICES.HTML       /services.html      301
+/PROJECTS.HTML       /projects.html      301
+/S-KILLS.HTML        /skills.html        301
+/STRUGGLES.HTML      /struggles.html     301
+/INSPIRATIONS.HTML   /inspirations.html  301
+/INSPIRATIONS.html   /inspirations.html  301
+/SKILLS/*            /skills/:splat      301
+/s-kills.html        /skills.html        301
+/style.css           /assets/css/style.css 301
