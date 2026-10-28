@@ -1,27 +1,71 @@
-/* THE AAMIR SHEIKH — interactions. Vanilla, no dependencies. */
+/* THE AAMIR SHEIKH — interactions v2. Vanilla, no dependencies. */
 (function () {
   "use strict";
   var doc = document, root = doc.documentElement;
+  root.classList.remove("no-js");
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var canHover = window.matchMedia("(hover: hover)").matches;
+  var canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   function $(s, c) { return (c || doc).querySelector(s); }
   function $$(s, c) { return Array.prototype.slice.call((c || doc).querySelectorAll(s)); }
-  function store(k, v) { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch (e) { return null; } }
+  function ss(k, v) { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch (e) { return null; } }
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 
-  /* ---------- header border on scroll ---------- */
+  /* ---------- theme (initial value is set by the inline <head> script) ---------- */
+  function setTheme(t, animate) {
+    if (animate) { root.classList.add("theme-anim"); setTimeout(function () { root.classList.remove("theme-anim"); }, 700); }
+    root.setAttribute("data-theme", t);
+    ls("theme", t);
+    var m = $('meta[name="theme-color"]'); if (m) m.setAttribute("content", t === "dark" ? "#0f0e0d" : "#efebe3");
+    $$("[data-theme-label]").forEach(function (el) { el.textContent = t === "dark" ? "Night" : "Day"; });
+    $$(".theme-btn").forEach(function (b) { b.setAttribute("aria-label", t === "dark" ? "Switch to light mode" : "Switch to dark mode"); b.setAttribute("aria-pressed", t === "dark" ? "true" : "false"); });
+    if (t === "dark") howl();
+  }
+  function toggleTheme() { setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark", true); }
+  $$("[data-theme-toggle]").forEach(function (b) { b.addEventListener("click", toggleTheme); });
+
+  /* ---------- header border ---------- */
+  setTimeout(function () { setTheme(root.getAttribute("data-theme") || "light", false); }, 0);
   var head = $(".site-head");
   function onScroll() { if (head) head.classList.toggle("scrolled", window.scrollY > 8); }
   window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
 
   /* ---------- letterbox intro (home, once per session) ---------- */
   var intro = $(".intro");
-  if (intro && !reduce && !store("seenIntro")) {
-    store("seenIntro", "1");
+  if (intro && !reduce && !ss("seenIntro")) {
+    ss("seenIntro", "1");
     intro.classList.add("play");
-    setTimeout(function () { intro.classList.add("go"); }, 900);
-    setTimeout(function () { intro.classList.add("done"); }, 1500);
-    setTimeout(function () { intro.classList.remove("play"); }, 2700);
+    setTimeout(function () { intro.classList.add("go"); }, 700);
+    setTimeout(function () { intro.classList.add("done"); }, 1200);
+    setTimeout(function () { intro.classList.remove("play"); }, 2300);
   }
+
+  /* ---------- wolf: draw on load, howl at night ---------- */
+  var wolves = $$(".wolf");
+  function howl() {
+    if (reduce) return;
+    (wolves || []).forEach(function (w) { w.classList.remove("howling"); void w.getBoundingClientRect(); w.classList.add("howling"); });
+  }
+  wolves.forEach(function (w) {
+    if (!reduce) w.classList.add("draw");
+    w.addEventListener("click", howl);
+  });
+  if (wolves.length && !reduce) {
+    setTimeout(howl, 2600);
+    setInterval(function () { if (!doc.hidden) howl(); }, 7000);
+  }
+
+  /* ---------- rotating hero word ---------- */
+  $$(".rot").forEach(function (r) {
+    var words = $$("span", r), i = 0;
+    if (words.length < 2 || reduce) return;
+    setInterval(function () {
+      if (doc.hidden) return;
+      var cur = words[i]; i = (i + 1) % words.length; var nx = words[i];
+      cur.classList.remove("on"); cur.classList.add("out");
+      nx.classList.remove("out"); nx.classList.add("on");
+      setTimeout(function () { cur.classList.remove("out"); }, 700);
+    }, 2600);
+  });
 
   /* ---------- pause menu ---------- */
   var pause = $("#pause"), lastFocus = null;
@@ -44,19 +88,16 @@
   if (pause) {
     pause.addEventListener("click", function (e) { if (e.target === pause || e.target.closest("[data-resume]")) closePause(); });
     pause.addEventListener("keydown", function (e) {
-      if (e.key !== "Tab") return;
-      var f = $$("a, button", pause); if (!f.length) return;
-      var a = f[0], z = f[f.length - 1];
-      if (e.shiftKey && doc.activeElement === a) { e.preventDefault(); z.focus(); }
-      else if (!e.shiftKey && doc.activeElement === z) { e.preventDefault(); a.focus(); }
-    });
-    // arrow keys move through the menu like a game
-    pause.addEventListener("keydown", function (e) {
-      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-      var items = $$(".pause-list a, .pause-list button", pause), i = items.indexOf(doc.activeElement);
-      e.preventDefault();
-      var n = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
-      items[n].focus();
+      var items = $$(".pause-list a, .pause-list button", pause);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        var i = items.indexOf(doc.activeElement);
+        items[e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length].focus();
+      } else if (e.key === "Tab") {
+        var f = $$("a, button", pause), a = f[0], z = f[f.length - 1];
+        if (e.shiftKey && doc.activeElement === a) { e.preventDefault(); z.focus(); }
+        else if (!e.shiftKey && doc.activeElement === z) { e.preventDefault(); a.focus(); }
+      }
     });
   }
 
@@ -64,11 +105,11 @@
   var player = $("#player"), pv = player && $("video", player), pt = player && $(".player-title", player);
   function openPlayer(src, title, poster) {
     if (!player) return;
-    pv.src = src; if (poster) pv.poster = poster;
+    pv.src = src; pv.poster = poster || "";
     pt.textContent = title || "";
     player.classList.add("open"); player.setAttribute("aria-hidden", "false");
     root.style.overflow = "hidden";
-    pv.muted = false; var p = pv.play(); if (p && p.catch) p.catch(function () {});
+    var p = pv.play(); if (p && p.catch) p.catch(function () {});
     $(".player-close", player).focus();
   }
   function closePlayer() {
@@ -77,9 +118,7 @@
     player.classList.remove("open"); player.setAttribute("aria-hidden", "true");
     root.style.overflow = "";
   }
-  if (player) {
-    player.addEventListener("click", function (e) { if (e.target === player || e.target.closest(".player-close")) closePlayer(); });
-  }
+  if (player) player.addEventListener("click", function (e) { if (e.target === player || e.target.closest(".player-close")) closePlayer(); });
   doc.addEventListener("click", function (e) {
     var t = e.target.closest("[data-play]");
     if (!t) return;
@@ -87,28 +126,21 @@
     openPlayer(t.getAttribute("data-play"), t.getAttribute("data-title"), t.getAttribute("data-poster"));
   });
 
-  /* ---------- keyboard: Esc = pause / back ---------- */
+  /* ---------- keys: Esc = pause/back, T = theme ---------- */
   doc.addEventListener("keydown", function (e) {
-    if (e.key !== "Escape") return;
-    if (player && player.classList.contains("open")) return closePlayer();
-    if (pause && pause.classList.contains("open")) return closePause();
     var tag = (doc.activeElement && doc.activeElement.tagName) || "";
-    if (tag !== "INPUT" && tag !== "TEXTAREA") openPause();
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.key === "Escape") {
+      if (player && player.classList.contains("open")) return closePlayer();
+      if (pause && pause.classList.contains("open")) return closePause();
+      openPause();
+    } else if ((e.key === "t" || e.key === "T") && !e.metaKey && !e.ctrlKey && !e.altKey) toggleTheme();
   });
 
-  /* ---------- lazy hover/scroll video previews ---------- */
-  function loadVid(v) {
-    if (v.dataset.src && !v.src) { v.src = v.dataset.src; }
-  }
-  function playIn(media) {
-    var v = $("video", media); if (!v) return;
-    loadVid(v);
-    var p = v.play(); if (p && p.then) p.then(function () { media.classList.add("playing"); }).catch(function () {}); else media.classList.add("playing");
-  }
-  function stopIn(media) {
-    var v = $("video", media); if (!v) return;
-    v.pause(); media.classList.remove("playing");
-  }
+  /* ---------- lazy hover / in-view video previews ---------- */
+  function loadVid(v) { if (v.dataset.src && !v.getAttribute("src")) v.src = v.dataset.src; }
+  function playIn(m) { var v = $("video", m); if (!v) return; loadVid(v); var p = v.play(); if (p && p.then) p.then(function () { m.classList.add("playing"); }).catch(function () {}); }
+  function stopIn(m) { var v = $("video", m); if (!v) return; v.pause(); m.classList.remove("playing"); }
   var previews = $$(".tile-media[data-preview]");
   if (!reduce) {
     if (canHover) {
@@ -116,8 +148,6 @@
         var host = m.closest(".tile, .clip") || m;
         host.addEventListener("mouseenter", function () { playIn(m); });
         host.addEventListener("mouseleave", function () { stopIn(m); });
-        host.addEventListener("focus", function () { playIn(m); }, true);
-        host.addEventListener("blur", function () { stopIn(m); }, true);
       });
     } else if ("IntersectionObserver" in window) {
       var vio = new IntersectionObserver(function (es) {
@@ -127,17 +157,17 @@
     }
   }
 
-  /* ---------- home reel: cycles muted loops ---------- */
+  /* ---------- home reel ---------- */
   var reel = $(".reel");
   if (reel) {
     var vids = $$(".reel-stage video", reel), ticks = $$(".reel-ticks button", reel);
     var rt = $(".reel-ui .title", reel), rl = $(".reel-ui .lbl", reel), rp = $(".reel-play", reel);
     var idx = -1, timer = null, visible = false;
-    function show(i) {
-      if (timer) clearTimeout(timer);
+    var show = function (i) {
+      clearTimeout(timer);
       idx = (i + vids.length) % vids.length;
       vids.forEach(function (v, j) {
-        if (j === idx) { loadVid(v); v.currentTime = 0; var p = v.play(); if (p && p.catch) p.catch(function () {}); v.classList.add("on"); }
+        if (j === idx) { loadVid(v); try { v.currentTime = 0; } catch (e) {} var p = v.play(); if (p && p.catch) p.catch(function () {}); v.classList.add("on"); }
         else { v.classList.remove("on"); (function (vv) { setTimeout(function () { vv.pause(); }, 800); })(v); }
       });
       ticks.forEach(function (t, j) { t.classList.remove("on"); void t.offsetWidth; if (j === idx) t.classList.add("on"); });
@@ -146,21 +176,20 @@
       rp.setAttribute("data-play", v.dataset.full); rp.setAttribute("data-title", v.dataset.title); rp.setAttribute("data-poster", v.poster);
       rp.setAttribute("aria-label", "Play " + v.dataset.title + " with sound");
       if (!reduce) timer = setTimeout(function () { if (visible) show(idx + 1); }, 6000);
-    }
+    };
     ticks.forEach(function (t, j) { t.addEventListener("click", function (e) { e.stopPropagation(); show(j); }); });
     if ("IntersectionObserver" in window) {
       new IntersectionObserver(function (es) {
         visible = es[0].isIntersecting;
         if (visible && idx === -1) show(0);
-        else if (visible) { var v = vids[idx]; v.play().catch(function () {}); if (!timer) show(idx); }
-        else if (idx > -1) { vids[idx].pause(); clearTimeout(timer); timer = null; }
+        else if (visible) show(idx);
+        else if (idx > -1) { vids[idx].pause(); clearTimeout(timer); }
       }, { threshold: .25 }).observe(reel);
     } else { visible = true; show(0); }
   }
 
-  /* ---------- reveal on scroll ---------- */
+  /* ---------- split words + reveal on scroll ---------- */
   $$(".split-words").forEach(function (el) {
-    if (el.dataset.split) return; el.dataset.split = 1;
     var walk = function (node) {
       Array.prototype.slice.call(node.childNodes).forEach(function (n) {
         if (n.nodeType === 3) {
@@ -172,20 +201,34 @@
             var i = doc.createElement("span"); i.textContent = w; o.appendChild(i); frag.appendChild(o);
           });
           node.replaceChild(frag, n);
-        } else if (n.nodeType === 1 && !n.classList.contains("brush")) walk(n);
-        else if (n.nodeType === 1) { var o2 = doc.createElement("span"); o2.className = "w"; var i2 = doc.createElement("span"); n.parentNode.replaceChild(o2, n); i2.appendChild(n); o2.appendChild(i2); }
+        } else if (n.nodeType === 1 && n.classList.contains("rot")) {
+          var o2 = doc.createElement("span"); o2.className = "w"; var i2 = doc.createElement("span");
+          n.parentNode.replaceChild(o2, n); i2.appendChild(n); o2.appendChild(i2);
+        } else if (n.nodeType === 1) walk(n);
       });
     };
     walk(el);
     $$(".w > span", el).forEach(function (s, i) { s.style.transitionDelay = Math.min(i * 0.045, .9) + "s"; });
   });
-  var rvs = $$(".rv, .split-words, .brush");
+  var rvs = $$(".rv, .split-words, .wipe, .giant, .notches");
   if ("IntersectionObserver" in window && !reduce) {
     var io = new IntersectionObserver(function (es) {
       es.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } });
-    }, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: .06 });
     rvs.forEach(function (el) { io.observe(el); });
   } else rvs.forEach(function (el) { el.classList.add("in"); });
+
+  /* ---------- project index: floating preview ---------- */
+  var peek = $(".peek");
+  if (peek && canHover && !reduce) {
+    var pimg = $("img", peek), x = 0, y = 0, tx = 0, ty = 0, raf = null;
+    var loop = function () { x += (tx - x) * .18; y += (ty - y) * .18; peek.style.left = x + "px"; peek.style.top = y + "px"; raf = Math.abs(tx - x) + Math.abs(ty - y) > .5 ? requestAnimationFrame(loop) : null; };
+    $$(".ptable a[data-peek]").forEach(function (a) {
+      a.addEventListener("mouseenter", function (e) { pimg.src = a.dataset.peek; x = tx = e.clientX + 170; y = ty = e.clientY; peek.classList.add("show"); });
+      a.addEventListener("mousemove", function (e) { tx = e.clientX + 170; ty = e.clientY; if (!raf) raf = requestAnimationFrame(loop); });
+      a.addEventListener("mouseleave", function () { peek.classList.remove("show"); });
+    });
+  }
 
   /* ---------- work filters ---------- */
   var filters = $$(".filters button");
@@ -193,9 +236,7 @@
     b.addEventListener("click", function () {
       var f = b.dataset.filter;
       filters.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
-      $$(".mission").forEach(function (m) {
-        m.hidden = !(f === "all" || (m.dataset.tags || "").split(" ").indexOf(f) > -1);
-      });
+      $$(".mission").forEach(function (m) { m.hidden = !(f === "all" || (m.dataset.tags || "").split(" ").indexOf(f) > -1); });
     });
   });
 
@@ -205,8 +246,7 @@
     var letters = ["D", "C", "B", "A", "S", "SS", "SSS"], words = ["Dull", "Cool", "Bravo", "Absolute", "Stylish", "Sensational", "Smokin' Sexy Style"];
     var rb = $("b", rank), rs = $("span", rank), cur = -1;
     var upd = function () {
-      var max = doc.documentElement.scrollHeight - window.innerHeight;
-      var p = max > 0 ? window.scrollY / max : 0;
+      var max = root.scrollHeight - window.innerHeight, p = max > 0 ? window.scrollY / max : 0;
       rank.classList.toggle("show", window.scrollY > 300);
       var i = Math.min(letters.length - 1, Math.floor(p * letters.length));
       if (i !== cur) { cur = i; rb.textContent = letters[i]; rs.textContent = words[i]; rb.classList.add("pop"); setTimeout(function () { rb.classList.remove("pop"); }, 260); }
@@ -214,26 +254,23 @@
     window.addEventListener("scroll", upd, { passive: true }); upd();
   }
 
-  /* ---------- local time in Tezpur ---------- */
-  var clock = $("[data-clock]");
-  if (clock) {
-    var tick = function () {
-      try { clock.textContent = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date()) + " IST"; } catch (e) {}
-    };
-    tick(); setInterval(tick, 30000);
-  }
-  $$("[data-year]").forEach(function (el) { el.textContent = new Date().getFullYear(); });
-
   /* ---------- 90-day grid ---------- */
   $$("[data-days-start]").forEach(function (svg) {
     var start = new Date(svg.getAttribute("data-days-start") + "T00:00:00+05:30");
-    var d = Math.floor((Date.now() - start.getTime()) / 86400000) + 1;
-    d = Math.max(0, Math.min(90, d));
+    var d = Math.max(0, Math.min(90, Math.floor((Date.now() - start.getTime()) / 86400000) + 1));
     $$(".days circle", svg).forEach(function (c, i) { if (i < d - 1) c.classList.add("d"); else if (i === d - 1) c.classList.add("today"); });
     var l = $("[data-days-label]", svg); if (l) l.textContent = d >= 90 ? "90 / 90 — COMPLETE" : "DAY " + d + " / 90";
   });
 
+  /* ---------- clock + year ---------- */
+  var clock = $("[data-clock]");
+  if (clock) {
+    var tick = function () { try { clock.textContent = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date()) + " IST"; } catch (e) {} };
+    tick(); setInterval(tick, 30000);
+  }
+  $$("[data-year]").forEach(function (el) { el.textContent = new Date().getFullYear(); });
+
   /* ---------- the cat ---------- */
   var cat = $(".cat");
-  if (cat) cat.addEventListener("click", function () { cat.animate && cat.animate([{ transform: "translateY(0)" }, { transform: "translateY(-14px)" }, { transform: "translateY(0)" }], { duration: 420, easing: "cubic-bezier(.2,.7,.1,1)" }); });
+  if (cat && cat.animate) cat.addEventListener("mouseenter", function () { cat.animate([{ transform: "translateY(-100%)" }, { transform: "translateY(-150%)" }, { transform: "translateY(-100%)" }], { duration: 420, easing: "cubic-bezier(.2,.7,.1,1)" }); });
 })();
