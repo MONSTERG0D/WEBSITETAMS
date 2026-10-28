@@ -267,6 +267,9 @@ T = [
 ("Now showing", "Jetzt läuft", "À l’affiche", "上映中"),
 ("Press any key or move to continue", "Beliebige Taste drücken oder bewegen", "Appuie sur une touche ou bouge pour continuer", "何かキーを押すか、動かして続ける"),
 ("Idle showreel (screensaver)", "Showreel im Leerlauf (Bildschirmschoner)", "Showreel au repos (économiseur d’écran)", "放置時ショーリール（スクリーンセーバー）"),
+("Change with time of day (morning Village · afternoon Riot · night Noir)", "Nach Tageszeit wechseln (morgens Dorf · nachmittags Riot · nachts Noir)", "Changer selon l’heure (matin Village · après-midi Riot · nuit Noir)", "時間帯で切り替え（朝はヴィレッジ・昼はライオット・夜はノワール）"),
+("Secret unlocked", "Geheimnis freigeschaltet", "Secret débloqué", "シークレット解放"),
+("Wolf mode", "Wolfsmodus", "Mode loup", "ウルフモード"),
 ]
 
 def build_js():

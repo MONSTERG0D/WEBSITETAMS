@@ -18,10 +18,12 @@
     noir: { name: "Noir", music: "Smooth Jazz", color: "#0e1424" },
     village: { name: "Village", music: "Ambient Village", color: "#efe6d2" }
   };
-  var DEF = { ui: "riot", track: "riot", link: true, vol: 55, sfx: true, amb: false, cvd: "none", bright: 100, text: 100, motion: "", links: false, music: false, lang: "en", idle: true };
+  var DEF = { ui: "riot", track: "riot", link: true, vol: 55, sfx: true, amb: false, cvd: "none", bright: 100, text: 100, motion: "", links: false, music: false, lang: "en", idle: true, uiPicked: false };
   var S = {};
   try { S = JSON.parse(localStorage.getItem("tas") || "{}"); } catch (e) { S = {}; }
   Object.keys(DEF).forEach(function (k) { if (S[k] === undefined) S[k] = DEF[k]; });
+  function timeUI() { var h = new Date().getHours(); return h >= 5 && h < 12 ? "village" : h >= 12 && h < 18 ? "riot" : "noir"; }
+  if (!S.uiPicked) { S.ui = timeUI(); if (S.link) S.track = S.ui; }
   if (!UI[S.ui]) S.ui = "riot";
   if (!UI[S.track]) S.track = S.ui;
   function save() { try { localStorage.setItem("tas", JSON.stringify(S)); } catch (e) {} }
@@ -211,8 +213,9 @@
   if (canHover) doc.addEventListener("mouseover", function (e) { var t = e.target.closest(".nav a, .btn, .pill, .index-list a, .ptable a, .chip, .tile, .clip-a"); if (t && !t.contains(e.relatedTarget)) sfx("hover"); });
 
   /* ===================================================== change interface / music */
-  function setUI(u, silent) {
-    if (!UI[u] || u === S.ui) return;
+  function setUI(u, silent, auto) {
+    if (!auto) S.uiPicked = true;
+    if (!UI[u] || u === S.ui) { save(); syncPanel(); return; }
     S.ui = u; if (S.link) S.track = u; save();
     root.classList.add("ui-anim");
     applyVisual();
@@ -233,7 +236,7 @@
     var tk = $("[data-tracks]", panel); if (tk) tk.style.opacity = S.link ? .5 : 1;
     var f = function (n) { return $('input[name="' + n + '"]', panel); };
     f("link").checked = !!S.link; f("sfx").checked = !!S.sfx; f("amb").checked = !!S.amb; f("vol").value = S.vol;
-    f("motion").checked = S.motion === "reduce"; f("links").checked = !!S.links; if (f("idle")) f("idle").checked = S.idle !== false;
+    f("motion").checked = S.motion === "reduce"; f("links").checked = !!S.links; if (f("idle")) f("idle").checked = S.idle !== false; if (f("auto")) f("auto").checked = !S.uiPicked;
     f("bright").value = S.bright; $("#bright-v").textContent = S.bright + "%";
     f("text").value = S.text; $("#text-v").textContent = S.text + "%";
     $$('input[name="cvd"]', panel).forEach(function (i) { i.checked = i.value === (S.cvd || "none"); });
@@ -267,6 +270,7 @@
       if (n === "lang") setLang(t.value);
       else if (n === "ui") setUI(t.value);
       else if (n === "track") setTrack(t.value);
+      else if (n === "auto") { S.uiPicked = !t.checked; save(); if (t.checked) setUI(timeUI(), false, true); syncPanel(); }
       else if (n === "link") { S.link = t.checked; if (S.link) S.track = S.ui; save(); syncPanel(); if (playing) playMusic(); announce(S.link ? T("Music now follows the interface") : T("Music and interface are now separate")); }
       else if (n === "sfx") { S.sfx = t.checked; save(); if (S.sfx) sfx("click"); }
       else if (n === "amb") { S.amb = t.checked; save(); if (S.amb) { unlock(); startAmb(); } else stopAmb(); }
@@ -437,8 +441,9 @@
   $$(".rot").forEach(function (r) {
     var words = $$("span", r), i = 0;
     if (words.length < 2) return;
-    var fit = function (el) { r.style.width = Math.ceil(el.getBoundingClientRect().width) + "px"; };
-    setTimeout(function () { fit(words[0]); }, 300);
+    var fit = function (el) { var em = parseFloat(getComputedStyle(r).fontSize) || 16; r.style.width = Math.ceil(el.getBoundingClientRect().width + em * .3) + "px"; };
+    setTimeout(function () { fit(words[i]); }, 300);
+    if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(function () { fit(words[i]); });
     window.addEventListener("resize", function () { fit(words[i]); });
     setInterval(function () {
       if (doc.hidden || reduced()) return;
@@ -648,6 +653,55 @@
     });
   });
 
+
+  /* time of day: re-check every 10 minutes while the visitor hasn't picked an interface */
+  setInterval(function () { if (!S.uiPicked && timeUI() !== S.ui) setUI(timeUI(), true, true); }, 600000);
+
+  /* ===================================================== cursor effects per interface */
+  (function cursorFx() {
+    if (!canHover) return;
+    var spot = doc.createElement("div"); spot.className = "fx-spot"; spot.setAttribute("aria-hidden", "true"); doc.body.appendChild(spot);
+    var sx = 0, sy = 0, tx = 0, ty = 0, raf = null;
+    function loop() { sx += (tx - sx) * .14; sy += (ty - sy) * .14; spot.style.transform = "translate(" + sx + "px," + sy + "px)"; raf = (Math.abs(tx - sx) + Math.abs(ty - sy) > .5) ? requestAnimationFrame(loop) : null; }
+    window.addEventListener("mousemove", function (e) { if (S.ui !== "noir" || reduced()) return; tx = e.clientX; ty = e.clientY; if (!raf) raf = requestAnimationFrame(loop); }, { passive: true });
+    doc.addEventListener("pointerdown", function (e) {
+      if (reduced() || e.pointerType !== "mouse" || S.cvd === "contrast") return;
+      var el = doc.createElement("i"); el.setAttribute("aria-hidden", "true");
+      if (S.ui === "riot") { el.className = "fx-slash"; el.style.left = e.clientX + "px"; el.style.top = e.clientY + "px"; el.style.setProperty("--r", (-35 + Math.random() * 20) + "deg"); }
+      else if (S.ui === "village") { el.className = "fx-leaf"; el.style.left = e.clientX + "px"; el.style.top = e.clientY + "px"; el.style.setProperty("--dx", (Math.random() * 80 - 40) + "px"); }
+      else { el.className = "fx-ring"; el.style.left = e.clientX + "px"; el.style.top = e.clientY + "px"; }
+      doc.body.appendChild(el); setTimeout(function () { el.remove(); }, 1200);
+    }, { passive: true });
+  })();
+
+  /* ===================================================== Konami code: ↑ ↑ ↓ ↓ ← → ← → B A */
+  (function konami() {
+    var code = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"], pos = 0;
+    function howl() {
+      if (!ctx() || !S.sfx) return; unlocked = true; if (actx.state === "suspended") actx.resume();
+      var t0 = actx.currentTime, o = actx.createOscillator(), g = actx.createGain(), v = actx.createOscillator(), vg = actx.createGain(), f = actx.createBiquadFilter();
+      o.type = "sawtooth"; f.type = "lowpass"; f.frequency.value = 1400;
+      o.frequency.setValueAtTime(330, t0); o.frequency.exponentialRampToValueAtTime(660, t0 + .7); o.frequency.setValueAtTime(660, t0 + 1.6); o.frequency.exponentialRampToValueAtTime(420, t0 + 2.6);
+      v.frequency.value = 5.5; vg.gain.value = 9; v.connect(vg); vg.connect(o.frequency);
+      g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.16, t0 + .25); g.gain.setValueAtTime(.16, t0 + 2.1); g.gain.exponentialRampToValueAtTime(.0001, t0 + 2.8);
+      o.connect(f); f.connect(g); g.connect(sfxGain); o.start(t0); v.start(t0); o.stop(t0 + 2.9); v.stop(t0 + 2.9);
+    }
+    function unlock() {
+      root.classList.add("konami"); ss("tasKonami", "1");
+      var box = doc.createElement("div"); box.className = "konami-fx"; box.setAttribute("role", "status");
+      box.innerHTML = '<i class="kf-flash"></i><i class="kf-moon"></i><div class="kf-txt"><b>SSS</b><span>Smokin’ Sexy Style!!</span><em>' + T("Secret unlocked") + ' — ' + T("Wolf mode") + '</em><strong>AWOOOOO</strong></div>';
+      doc.body.appendChild(box); howl(); sfx("switch");
+      var hr = $("[data-hero-rank]"); if (hr) { hr.textContent = "SSS"; var w = $("[data-hero-rank-w]"); if (w) w.textContent = "Smokin' Sexy Style"; }
+      setTimeout(function () { box.classList.add("out"); }, reduced() ? 2500 : 3600);
+      setTimeout(function () { box.remove(); }, reduced() ? 2900 : 4400);
+    }
+    if (ss("tasKonami")) root.classList.add("konami");
+    doc.addEventListener("keydown", function (e) {
+      var k = (e.key || "").toLowerCase();
+      if (k === code[pos]) { pos++; if (pos === code.length) { pos = 0; unlock(); } }
+      else pos = k === code[0] ? 1 : 0;
+    });
+  })();
 
   /* ===================================================== idle showreel (old-DVD screensaver) */
   (function idleReel() {

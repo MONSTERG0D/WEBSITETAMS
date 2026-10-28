@@ -140,7 +140,7 @@ def art(name):
 # ---------------------------------------------------------------- head / shell
 # Runs before paint: restores interface, colour-vision mode, brightness and text size so nothing flashes.
 BOOT = ("<script>(function(){var d=document.documentElement,s={};try{s=JSON.parse(localStorage.getItem('tas')||'{}')}catch(e){}"
-        "d.setAttribute('data-ui',s.ui||'riot');if(s.cvd)d.setAttribute('data-cvd',s.cvd);"
+        "var u=s.ui||'riot';if(!s.uiPicked){var h=new Date().getHours();u=h>=5&&h<12?'village':h>=12&&h<18?'riot':'noir'}d.setAttribute('data-ui',u);if(s.cvd)d.setAttribute('data-cvd',s.cvd);"
         "if(s.motion)d.setAttribute('data-motion',s.motion);if(s.links)d.setAttribute('data-links','1');"
         "var L=s.lang||'en';d.setAttribute('lang',L);d.setAttribute('data-lang',L);if(L==='ar')d.setAttribute('dir','rtl');"
         "if(s.text)d.style.fontSize=s.text+'%';if(s.bright&&s.bright!=100)d.style.setProperty('--bright',s.bright/100)})()</script>")
@@ -237,6 +237,7 @@ def settings_panel():
 
     <section aria-labelledby="ps-ui"><h3 id="ps-ui" class="label">{ico("palette")} Interface</h3>
       <div class="ui-cards" role="radiogroup" aria-label="Interface">{ui_cards}</div>
+      <label class="tog"><input type="checkbox" name="auto" checked><span class="tog-ui" aria-hidden="true"></span><span>Change with time of day (morning Village · afternoon Riot · night Noir)</span></label>
     </section>
 
     <section aria-labelledby="ps-snd"><h3 id="ps-snd" class="label">{ico("headphones")} Music &amp; sound</h3>

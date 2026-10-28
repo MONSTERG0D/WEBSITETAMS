@@ -264,4 +264,7 @@ M = {
 "Now showing": ("En pantalla", "Сейчас в эфире", "يُعرض الآن"),
 "Press any key or move to continue": ("Pulsa una tecla o muévete para continuar", "Нажми любую клавишу или двинь мышь, чтобы продолжить", "اضغط أي مفتاح أو حرّك للمتابعة"),
 "Idle showreel (screensaver)": ("Showreel en reposo (salvapantallas)", "Шоурил в простое (заставка)", "عرض الأعمال عند الخمول (شاشة توقف)"),
+"Change with time of day (morning Village · afternoon Riot · night Noir)": ("Cambiar según la hora (mañana Aldea · tarde Riot · noche Noir)", "Менять по времени суток (утро — Деревня · день — Riot · ночь — Нуар)", "تغيير حسب الوقت (الصباح القرية · الظهيرة رايوت · الليل نوار)"),
+"Secret unlocked": ("Secreto desbloqueado", "Секрет открыт", "تم فتح السر"),
+"Wolf mode": ("Modo lobo", "Режим волка", "وضع الذئب"),
 }
