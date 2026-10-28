@@ -141,7 +141,7 @@ def art(name):
 BOOT = ("<script>(function(){var d=document.documentElement,s={};try{s=JSON.parse(localStorage.getItem('tas')||'{}')}catch(e){}"
         "d.setAttribute('data-ui',s.ui||'riot');if(s.cvd)d.setAttribute('data-cvd',s.cvd);"
         "if(s.motion)d.setAttribute('data-motion',s.motion);if(s.links)d.setAttribute('data-links','1');"
-        "var L=s.lang||'en';d.setAttribute('lang',L==='ja'?'ja':L);d.setAttribute('data-lang',L);"
+        "var L=s.lang||'en';d.setAttribute('lang',L);d.setAttribute('data-lang',L);if(L==='ar')d.setAttribute('dir','rtl');"
         "if(s.text)d.style.fontSize=s.text+'%';if(s.bright&&s.bright!=100)d.style.setProperty('--bright',s.bright/100)})()</script>")
 
 def head(title, desc, path, p):
@@ -197,6 +197,9 @@ def header(current, p):
           <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="de" lang="de" type="button">Deutsch</button></li>
           <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="fr" lang="fr" type="button">Français</button></li>
           <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="ja" lang="ja" type="button">日本語</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="es" lang="es" type="button">Español</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="ru" lang="ru" type="button">Русский</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="ar" lang="ar" dir="rtl" type="button">العربية</button></li>
         </ul>
       </div>
       <button class="pill icon-pill music-btn" type="button" data-music-toggle aria-pressed="false" aria-label="Play music">{ico("play", "i-play")}{ico("pause", "i-pause")}<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
@@ -226,7 +229,7 @@ def settings_panel():
     <div class="panel-top"><h2 id="panel-h">{ico("sliders-horizontal")} Settings</h2><button type="button" class="pill icon-pill" data-panel-close aria-label="Close settings">{ico("x")}</button></div>
 
     <section aria-labelledby="ps-lang"><h3 id="ps-lang" class="label">{ico("languages")} Language</h3>
-      <div class="chips" role="radiogroup" aria-label="Language">{"".join(f'<label class="chip"><input type="radio" name="lang" value="{k}"{" checked" if k == "en" else ""}><span lang="{k}">{n}</span></label>' for k, n in [("en", "English"), ("de", "Deutsch"), ("fr", "Français"), ("ja", "日本語")])}</div>
+      <div class="chips" role="radiogroup" aria-label="Language">{"".join(f'<label class="chip"><input type="radio" name="lang" value="{k}"{" checked" if k == "en" else ""}><span lang="{k}">{n}</span></label>' for k, n in [("en", "English"), ("de", "Deutsch"), ("fr", "Français"), ("ja", "日本語"), ("es", "Español"), ("ru", "Русский"), ("ar", "العربية")])}</div>
     </section>
 
     <section aria-labelledby="ps-ui"><h3 id="ps-ui" class="label">{ico("palette")} Interface</h3>
@@ -896,8 +899,13 @@ def write_sitemap():
     open(os.path.join(ROOT, "sitemap.xml"), "w").write(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
 
 def write_i18n():
-    import i18n
+    import i18n, i18n_more
     data = i18n.build_js()
+    keys = [t[0] for t in i18n.T]
+    missing = [k for k in keys if k not in i18n_more.M]
+    if missing: print("WARNING missing es/ru/ar:", missing[:10])
+    for i, code in enumerate(("es", "ru", "ar")):
+        data[code] = {k: v[i] for k, v in i18n_more.M.items()}
     js = "/* Translations (EN → DE / FR / JA). Generated from _build/i18n.py */\nwindow.TAS_I18N=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
     open(os.path.join(ROOT, "assets", "js", "i18n.js"), "w", encoding="utf-8").write(js)
     print("wrote assets/js/i18n.js", sum(len(v) for v in data.values()), "strings")

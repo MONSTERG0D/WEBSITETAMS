@@ -28,7 +28,7 @@
   function reduced() { return sysReduce || S.motion === "reduce"; }
 
   /* ===================================================== languages (EN / DE / FR / JA) */
-  var LANG = { en: "English", de: "Deutsch", fr: "Français", ja: "日本語" };
+  var LANG = { en: "English", de: "Deutsch", fr: "Français", ja: "日本語", es: "Español", ru: "Русский", ar: "العربية" };
   if (!LANG[S.lang]) S.lang = "en";
   var DICT = S.lang !== "en" ? (window.TAS_I18N || {})[S.lang] || null : null;
   function T(s) { return DICT && DICT[s] !== undefined ? DICT[s] : s; }
@@ -41,7 +41,8 @@
     ["aria-label", "placeholder", "alt"].forEach(function (a) { $$("[" + a + "]").forEach(function (el) { if (el.closest("[lang]:not(html)")) return; var v = el.getAttribute(a); if (DICT[v] !== undefined) el.setAttribute(a, DICT[v]); }); });
     var parts = doc.title.split(" — "); if (DICT[parts[0]] !== undefined) { parts[0] = DICT[parts[0]]; doc.title = parts.join(" — "); }
   }
-  if (S.lang === "ja") { var jf = doc.createElement("link"); jf.rel = "stylesheet"; jf.href = "https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@500;700&display=swap"; doc.head.appendChild(jf); }
+  var XF = { ja: "Dela+Gothic+One&family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@500;700", ru: "Oswald:wght@500;700&family=Manrope:wght@400;600;700&family=Playfair+Display:ital@0;1&family=Caveat:wght@600", ar: "Cairo:wght@400;600;800&family=Amiri:ital@0;1&family=Reem+Kufi:wght@600" };
+  if (XF[S.lang]) { var jf = doc.createElement("link"); jf.rel = "stylesheet"; jf.href = "https://fonts.googleapis.com/css2?family=" + XF[S.lang] + "&display=swap"; doc.head.appendChild(jf); }
   try { translatePage(); } catch (e) {}
   root.classList.add("i18n-done");
   function setLang(l) { if (!LANG[l] || l === S.lang) return; S.lang = l; save(); location.reload(); }
@@ -299,7 +300,7 @@
       reading = true; if (lbl) lbl.textContent = T("Stop reading");
       if (playing) ramp(musicGain, musicVol() * .25, .4);
       chunks.forEach(function (c, i) {
-        var u = new SpeechSynthesisUtterance(c); u.lang = { en: "en-IN", de: "de-DE", fr: "fr-FR", ja: "ja-JP" }[S.lang]; u.rate = 1;
+        var u = new SpeechSynthesisUtterance(c); u.lang = { en: "en-IN", de: "de-DE", fr: "fr-FR", ja: "ja-JP", es: "es-ES", ru: "ru-RU", ar: "ar-SA" }[S.lang]; u.rate = 1;
         if (i === chunks.length - 1) u.onend = function () { reading = false; if (lbl) lbl.textContent = T("Read this page aloud"); if (playing) ramp(musicGain, musicVol(), .6); };
         speechSynthesis.speak(u);
       });
