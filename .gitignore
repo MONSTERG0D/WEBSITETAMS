@@ -5,3 +5,4 @@ _old_site_backup/
 .DS_Store
 ._*
 assets/media/money follows*.mp4
+__pycache__/

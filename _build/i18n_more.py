@@ -256,4 +256,12 @@ M = {
 "Photos — Unsplash License": ("Fotos — licencia de Unsplash", "Фото — лицензия Unsplash", "الصور — ترخيص Unsplash"), "Also": ("Además", "Также", "أيضًا"),
 "Sound effects: synthesised live in your browser": ("Efectos de sonido: sintetizados en directo en tu navegador", "Звуковые эффекты: синтезируются прямо в браузере", "المؤثرات الصوتية: تُولَّد مباشرة في متصفحك"),
 "Error 404": ("Error 404", "Ошибка 404", "خطأ 404"), "Lost from the pack.": ("Perdido de la manada.", "Отбился от стаи.", "تائه عن القطيع."), "This page got cut in the edit.": ("Esta página se quedó en la sala de montaje.", "Эту страницу вырезали при монтаже.", "هذه الصفحة حُذفت في المونتاج."), "Find the pack": ("Volver a la manada", "Найти стаю", "عُد إلى القطيع"),
+
+"(03) Latest on Instagram": ("(03) Lo último en Instagram", "(03) Новое в Instagram", "(03) أحدث الأعمال على إنستغرام"),
+"New work lands here first.": ("Los trabajos nuevos llegan aquí primero.", "Новые работы появляются здесь первыми.", "الأعمال الجديدة تصل هنا أولًا."),
+"Follow on Instagram": ("Seguir en Instagram", "Подписаться в Instagram", "تابع على إنستغرام"),
+"(04) Chapters": ("(04) Capítulos", "(04) Главы", "(04) الفصول"),
+"Now showing": ("En pantalla", "Сейчас в эфире", "يُعرض الآن"),
+"Press any key or move to continue": ("Pulsa una tecla o muévete para continuar", "Нажми любую клавишу или двинь мышь, чтобы продолжить", "اضغط أي مفتاح أو حرّك للمتابعة"),
+"Idle showreel (screensaver)": ("Showreel en reposo (salvapantallas)", "Шоурил в простое (заставка)", "عرض الأعمال عند الخمول (شاشة توقف)"),
 }

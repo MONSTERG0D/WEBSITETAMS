@@ -16,6 +16,7 @@ BRAND = "THE AAMIR SHEIKH"
 EMAIL = "ak4418561@gmail.com"
 WHATSAPP = "918082285886"          # +91 80822 85886 (wa.me format, no +)
 GITHUB = "https://github.com/MONSTERG0D"
+INSTAGRAM = [("the_aamir_sheikh", "https://www.instagram.com/the_aamir_sheikh/"), ("stry.tas", "https://www.instagram.com/stry.tas/")]
 FONTS = ("https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600"
          "&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap")
 
@@ -200,6 +201,8 @@ def header(current, p):
           <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="es" lang="es" type="button">Español</button></li>
           <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="ru" lang="ru" type="button">Русский</button></li>
           <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="ar" lang="ar" dir="rtl" type="button">العربية</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="zh" lang="zh" type="button">中文</button></li>
+          <li role="none"><button role="menuitemradio" aria-checked="false" data-set-lang="ko" lang="ko" type="button">한국어</button></li>
         </ul>
       </div>
       <button class="pill icon-pill music-btn" type="button" data-music-toggle aria-pressed="false" aria-label="Play music">{ico("play", "i-play")}{ico("pause", "i-pause")}<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
@@ -229,7 +232,7 @@ def settings_panel():
     <div class="panel-top"><h2 id="panel-h">{ico("sliders-horizontal")} Settings</h2><button type="button" class="pill icon-pill" data-panel-close aria-label="Close settings">{ico("x")}</button></div>
 
     <section aria-labelledby="ps-lang"><h3 id="ps-lang" class="label">{ico("languages")} Language</h3>
-      <div class="chips" role="radiogroup" aria-label="Language">{"".join(f'<label class="chip"><input type="radio" name="lang" value="{k}"{" checked" if k == "en" else ""}><span lang="{k}">{n}</span></label>' for k, n in [("en", "English"), ("de", "Deutsch"), ("fr", "Français"), ("ja", "日本語"), ("es", "Español"), ("ru", "Русский"), ("ar", "العربية")])}</div>
+      <div class="chips" role="radiogroup" aria-label="Language">{"".join(f'<label class="chip"><input type="radio" name="lang" value="{k}"{" checked" if k == "en" else ""}><span lang="{k}">{n}</span></label>' for k, n in [("en", "English"), ("de", "Deutsch"), ("fr", "Français"), ("ja", "日本語"), ("es", "Español"), ("ru", "Русский"), ("ar", "العربية"), ("zh", "中文"), ("ko", "한국어")])}</div>
     </section>
 
     <section aria-labelledby="ps-ui"><h3 id="ps-ui" class="label">{ico("palette")} Interface</h3>
@@ -252,6 +255,7 @@ def settings_panel():
       <label class="rng wide">{ico("a-large-small")}<span>Text size</span><input type="range" name="text" min="85" max="150" step="5" value="100" aria-describedby="text-v"><output id="text-v">100%</output></label>
       <label class="tog"><input type="checkbox" name="motion"><span class="tog-ui" aria-hidden="true"></span><span>Reduce motion</span></label>
       <label class="tog"><input type="checkbox" name="links"><span class="tog-ui" aria-hidden="true"></span><span>Underline all links</span></label>
+      <label class="tog"><input type="checkbox" name="idle" checked><span class="tog-ui" aria-hidden="true"></span><span>Idle showreel (screensaver)</span></label>
       <div class="row-ctl"><button type="button" class="btn btn--small" data-read>{ico("speech")}<span data-read-label>Read this page aloud</span></button>
         <button type="button" class="btn btn--small btn--ghost" data-reset>{ico("rotate-ccw")}Reset</button></div>
       <p class="mini muted">Works with TalkBack, VoiceOver and NVDA. Shortcuts: <kbd>Esc</kbd> menu · <kbd>S</kbd> settings · <kbd>M</kbd> music.</p>
@@ -312,7 +316,7 @@ def footer(p):
         </div>
       </div>
       <div class="col"><p class="label">Chapters</p><ul class="mt-s foot-list">{pages}</ul></div>
-      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li><li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
+      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
     </div>
     <div class="foot-base label">
       <span>© <span data-year>2026</span> {BRAND}</span>
@@ -334,11 +338,20 @@ def chapter_nav(current, p):
 <li><a href="{p}{prev[0]}"><span class="num">{prev[2]}</span><span class="t">{ico(prev[5])} Back: {prev[3]}</span><span class="d">{prev[4]}</span></a></li>
 </ul></section>'''
 
+def attract(p):
+    items = [{"s": f"{p}{M}{c[0]}-loop.mp4", "t": c[1], "k": c[2], "o": c[4]} for c in CLIPS + CLIPS2]
+    return f'''<div class="attract" id="attract" aria-hidden="true" hidden data-items='{esc(json.dumps(items))}'>
+  <div class="at-stage"><video muted playsinline preload="none"></video><video muted playsinline preload="none"></video></div>
+  <div class="at-cap"><p class="label">{ico("tv")} Now showing</p><h2 class="at-title"></h2><p class="at-kind"></p></div>
+  <div class="at-logo"><span>THE</span> AAMIR SHEIKH</div>
+  <p class="at-hint label">Press any key or move to continue</p>
+</div>'''
+
 def page(path, title, desc, body, current=None, depth=0, home=False):
     p = "../" * depth
     cls = ' class="home"' if home else ""
     doc = (head(title, desc, path, p) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p)
-           + settings_panel() + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + "</body>\n</html>\n")
+           + settings_panel() + attract(p) + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + "</body>\n</html>\n")
     doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
     out = os.path.join(ROOT, path)
     os.makedirs(os.path.dirname(out), exist_ok=True)
@@ -448,12 +461,17 @@ def build_home():
   </div>
 </section>
 
+<section class="wrap section cv" style="padding-top:0" aria-labelledby="ig-h">
+  <div class="s-head"><p class="label">{ico("instagram")} (03) Latest on Instagram</p><h2 class="h-l split-words" id="ig-h">New work lands here first.</h2></div>
+  <ul class="ig-cards">{"".join(f'<li class="rv"><a class="ig-card" href="{u}" target="_blank" rel="me noopener"><span class="ig-i">{ico("instagram")}</span><span class="ig-h">@{h}</span><span class="ig-go">Follow on Instagram {ico("arrow-up-right")}</span></a></li>' for h, u in INSTAGRAM)}</ul>
+</section>
+
 <section class="wrap section cv" style="padding-top:0">
   <p class="pull split-words">This site isn’t a résumé. It’s a <em>save file</em>.</p>
 </section>
 
 <section class="wrap section cv" style="padding-top:0">
-  <div class="s-head"><p class="label">{ico("layers")} (02) Chapters</p><h2 class="h-l split-words">Pick up where you left off.</h2></div>
+  <div class="s-head"><p class="label">{ico("layers")} (04) Chapters</p><h2 class="h-l split-words">Pick up where you left off.</h2></div>
   <ul class="index-list">{chapters}</ul>
 </section>
 ''' + epilogue("")
@@ -906,6 +924,11 @@ def write_i18n():
     if missing: print("WARNING missing es/ru/ar:", missing[:10])
     for i, code in enumerate(("es", "ru", "ar")):
         data[code] = {k: v[i] for k, v in i18n_more.M.items()}
+    import i18n_cjk
+    miss2 = [k for k in keys if k not in i18n_cjk.C]
+    if miss2: print("WARNING missing zh/ko:", miss2[:10])
+    for i, code in enumerate(("zh", "ko")):
+        data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
     js = "/* Translations (EN → DE / FR / JA). Generated from _build/i18n.py */\nwindow.TAS_I18N=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
     open(os.path.join(ROOT, "assets", "js", "i18n.js"), "w", encoding="utf-8").write(js)
     print("wrote assets/js/i18n.js", sum(len(v) for v in data.values()), "strings")

@@ -18,7 +18,7 @@
     noir: { name: "Noir", music: "Smooth Jazz", color: "#0e1424" },
     village: { name: "Village", music: "Ambient Village", color: "#efe6d2" }
   };
-  var DEF = { ui: "riot", track: "riot", link: true, vol: 55, sfx: true, amb: false, cvd: "none", bright: 100, text: 100, motion: "", links: false, music: false, lang: "en" };
+  var DEF = { ui: "riot", track: "riot", link: true, vol: 55, sfx: true, amb: false, cvd: "none", bright: 100, text: 100, motion: "", links: false, music: false, lang: "en", idle: true };
   var S = {};
   try { S = JSON.parse(localStorage.getItem("tas") || "{}"); } catch (e) { S = {}; }
   Object.keys(DEF).forEach(function (k) { if (S[k] === undefined) S[k] = DEF[k]; });
@@ -28,7 +28,7 @@
   function reduced() { return sysReduce || S.motion === "reduce"; }
 
   /* ===================================================== languages (EN / DE / FR / JA) */
-  var LANG = { en: "English", de: "Deutsch", fr: "Français", ja: "日本語", es: "Español", ru: "Русский", ar: "العربية" };
+  var LANG = { en: "English", de: "Deutsch", fr: "Français", ja: "日本語", es: "Español", ru: "Русский", ar: "العربية", zh: "中文", ko: "한국어" };
   if (!LANG[S.lang]) S.lang = "en";
   var DICT = S.lang !== "en" ? (window.TAS_I18N || {})[S.lang] || null : null;
   function T(s) { return DICT && DICT[s] !== undefined ? DICT[s] : s; }
@@ -41,7 +41,7 @@
     ["aria-label", "placeholder", "alt"].forEach(function (a) { $$("[" + a + "]").forEach(function (el) { if (el.closest("[lang]:not(html)")) return; var v = el.getAttribute(a); if (DICT[v] !== undefined) el.setAttribute(a, DICT[v]); }); });
     var parts = doc.title.split(" — "); if (DICT[parts[0]] !== undefined) { parts[0] = DICT[parts[0]]; doc.title = parts.join(" — "); }
   }
-  var XF = { ja: "Dela+Gothic+One&family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@500;700", ru: "Oswald:wght@500;700&family=Manrope:wght@400;600;700&family=Playfair+Display:ital@0;1&family=Caveat:wght@600", ar: "Cairo:wght@400;600;800&family=Amiri:ital@0;1&family=Reem+Kufi:wght@600" };
+  var XF = { ja: "Dela+Gothic+One&family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@500;700", ru: "Oswald:wght@500;700&family=Manrope:wght@400;600;700&family=Playfair+Display:ital@0;1&family=Caveat:wght@600", ar: "Cairo:wght@400;600;800&family=Amiri:ital@0;1&family=Reem+Kufi:wght@600", zh: "Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@500;700&family=ZCOOL+QingKe+HuangYou", ko: "Noto+Sans+KR:wght@400;700&family=Nanum+Myeongjo:wght@700&family=Black+Han+Sans" };
   if (XF[S.lang]) { var jf = doc.createElement("link"); jf.rel = "stylesheet"; jf.href = "https://fonts.googleapis.com/css2?family=" + XF[S.lang] + "&display=swap"; doc.head.appendChild(jf); }
   try { translatePage(); } catch (e) {}
   root.classList.add("i18n-done");
@@ -233,7 +233,7 @@
     var tk = $("[data-tracks]", panel); if (tk) tk.style.opacity = S.link ? .5 : 1;
     var f = function (n) { return $('input[name="' + n + '"]', panel); };
     f("link").checked = !!S.link; f("sfx").checked = !!S.sfx; f("amb").checked = !!S.amb; f("vol").value = S.vol;
-    f("motion").checked = S.motion === "reduce"; f("links").checked = !!S.links;
+    f("motion").checked = S.motion === "reduce"; f("links").checked = !!S.links; if (f("idle")) f("idle").checked = S.idle !== false;
     f("bright").value = S.bright; $("#bright-v").textContent = S.bright + "%";
     f("text").value = S.text; $("#text-v").textContent = S.text + "%";
     $$('input[name="cvd"]', panel).forEach(function (i) { i.checked = i.value === (S.cvd || "none"); });
@@ -273,6 +273,7 @@
       else if (n === "cvd") { S.cvd = t.value; save(); applyVisual(); announce(t.parentNode.textContent.trim()); }
       else if (n === "motion") { S.motion = t.checked ? "reduce" : ""; save(); applyVisual(); }
       else if (n === "links") { S.links = t.checked; save(); applyVisual(); }
+      else if (n === "idle") { S.idle = t.checked; save(); }
     });
     panel.addEventListener("input", function (e) {
       var t = e.target, n = t.name;
@@ -300,7 +301,7 @@
       reading = true; if (lbl) lbl.textContent = T("Stop reading");
       if (playing) ramp(musicGain, musicVol() * .25, .4);
       chunks.forEach(function (c, i) {
-        var u = new SpeechSynthesisUtterance(c); u.lang = { en: "en-IN", de: "de-DE", fr: "fr-FR", ja: "ja-JP", es: "es-ES", ru: "ru-RU", ar: "ar-SA" }[S.lang]; u.rate = 1;
+        var u = new SpeechSynthesisUtterance(c); u.lang = { en: "en-IN", de: "de-DE", fr: "fr-FR", ja: "ja-JP", es: "es-ES", ru: "ru-RU", ar: "ar-SA", zh: "zh-CN", ko: "ko-KR" }[S.lang]; u.rate = 1;
         if (i === chunks.length - 1) u.onend = function () { reading = false; if (lbl) lbl.textContent = T("Read this page aloud"); if (playing) ramp(musicGain, musicVol(), .6); };
         speechSynthesis.speak(u);
       });
@@ -646,6 +647,61 @@
       });
     });
   });
+
+
+  /* ===================================================== idle showreel (old-DVD screensaver) */
+  (function idleReel() {
+    var box = $("#attract"); if (!box) return;
+    var items = []; try { items = JSON.parse(box.getAttribute("data-items")); } catch (e) { return; }
+    var vids = $$(".at-stage video", box), tt = $(".at-title", box), tk = $(".at-kind", box), logo = $(".at-logo", box);
+    var IDLE = 45000, timer = null, on = false, idx = 0, cur = 0, swap = null, raf = null;
+    var colors = ["#ff0054", "#9eff00", "#d4a24c", "#3aa0ff", "#f4f1ea", "#e07a8a"], ci = 0;
+    var x = 40, y = 40, dx = 2.2, dy = 1.7;
+    function busy() {
+      var a = doc.activeElement, tag = a && a.tagName;
+      return doc.hidden || reading || S.idle === false || (intro && !intro.hidden) ||
+        (player && player.classList.contains("open")) || (panel && panel.classList.contains("open")) ||
+        (pause && pause.classList.contains("open")) || tag === "INPUT" || tag === "TEXTAREA";
+    }
+    function arm() { clearTimeout(timer); timer = setTimeout(function () { if (busy()) arm(); else start(); }, IDLE); }
+    function showClip() {
+      var it = items[idx % items.length], v = vids[cur], o = vids[1 - cur];
+      v.src = it.s; v.currentTime = 0; var p = v.play(); if (p && p.catch) p.catch(function () {});
+      v.classList.add("show"); o.classList.remove("show"); setTimeout(function () { if (on) o.pause(); }, 1000);
+      tt.textContent = it.t; tk.textContent = T(it.k);
+      cur = 1 - cur; idx++;
+    }
+    function bounce() {
+      var W = window.innerWidth - logo.offsetWidth, H = window.innerHeight - logo.offsetHeight;
+      x += dx; y += dy; var hit = false;
+      if (x <= 0 || x >= W) { dx = -dx; x = Math.max(0, Math.min(W, x)); hit = true; }
+      if (y <= 0 || y >= H) { dy = -dy; y = Math.max(0, Math.min(H, y)); hit = true; }
+      if (hit) { ci = (ci + 1) % colors.length; logo.style.color = colors[ci]; }
+      logo.style.transform = "translate(" + x + "px," + y + "px)";
+      raf = requestAnimationFrame(bounce);
+    }
+    function start() {
+      if (on || !items.length) return; on = true;
+      idx = Math.floor(Math.random() * items.length);
+      box.hidden = false; void box.offsetWidth; box.classList.add("on");
+      if (playing) ramp(musicGain, musicVol() * .5, 1);
+      showClip(); swap = setInterval(showClip, 6500);
+      if (!reduced()) { x = Math.random() * 200 + 20; y = Math.random() * 200 + 20; bounce(); }
+      else logo.style.transform = "translate(24px,24px)";
+    }
+    function stop() {
+      if (!on) return arm(); on = false;
+      clearInterval(swap); cancelAnimationFrame(raf);
+      box.classList.remove("on"); vids.forEach(function (v) { v.pause(); v.classList.remove("show"); });
+      if (playing) ramp(musicGain, musicVol(), .6);
+      setTimeout(function () { if (!on) box.hidden = true; }, 800);
+      arm();
+    }
+    ["mousemove", "pointerdown", "keydown", "wheel", "touchstart", "scroll"].forEach(function (ev) {
+      window.addEventListener(ev, function (e) { if (on) { if (ev === "keydown") e.preventDefault(); stop(); } else arm(); }, { passive: ev !== "keydown", capture: true });
+    });
+    arm();
+  })();
 
   /* ===================================================== boot */
   applyVisual(); syncMusicUI();

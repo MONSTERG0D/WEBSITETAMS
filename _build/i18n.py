@@ -259,6 +259,14 @@ T = [
 ("Photos — Unsplash License", "Fotos — Unsplash-Lizenz", "Photos — licence Unsplash", "写真 — Unsplashライセンス"), ("Also", "Außerdem", "Aussi", "その他"),
 ("Sound effects: synthesised live in your browser", "Soundeffekte: live in deinem Browser synthetisiert", "Effets sonores : synthétisés en direct dans ton navigateur", "効果音：ブラウザ内でリアルタイム合成"),
 ("Error 404", "Fehler 404", "Erreur 404", "エラー404"), ("Lost from the pack.", "Vom Rudel getrennt.", "Perdu loin de la meute.", "群れからはぐれた。"), ("This page got cut in the edit.", "Diese Seite ist im Schnitt rausgeflogen.", "Cette page a été coupée au montage.", "このページは編集でカットされました。"), ("Find the pack", "Zurück zum Rudel", "Retrouver la meute", "群れに戻る"),
+# ---------- v3.2 additions ----------
+("(03) Latest on Instagram", "(03) Neu auf Instagram", "(03) Nouveautés sur Instagram", "(03) Instagramの最新作"),
+("New work lands here first.", "Neue Arbeiten erscheinen zuerst hier.", "Les nouveaux projets arrivent ici en premier.", "新作はまずここに届く。"),
+("Follow on Instagram", "Auf Instagram folgen", "Suivre sur Instagram", "Instagramでフォロー"),
+("(04) Chapters", "(04) Kapitel", "(04) Chapitres", "(04) チャプター"),
+("Now showing", "Jetzt läuft", "À l’affiche", "上映中"),
+("Press any key or move to continue", "Beliebige Taste drücken oder bewegen", "Appuie sur une touche ou bouge pour continuer", "何かキーを押すか、動かして続ける"),
+("Idle showreel (screensaver)", "Showreel im Leerlauf (Bildschirmschoner)", "Showreel au repos (économiseur d’écran)", "放置時ショーリール（スクリーンセーバー）"),
 ]
 
 def build_js():
