@@ -11,3 +11,5 @@
 /SKILLS/*            /skills/:splat      301
 /s-kills.html        /skills.html        301
 /style.css           /assets/css/style.css 301
+/about               /purpose.html       301
+/contact             /order.html         301

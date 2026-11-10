@@ -43,7 +43,19 @@ CHAPTERS = [
     ("services.html", "Services", "VI", "Services", "What I can make for you.", "sparkles"),
     ("order.html", "Order", "VII", "Order & Feedback", "Pick what you want. I get it on WhatsApp.", "shopping-bag"),
 ]
-NAV_ORDER = ["projects.html", "purpose.html", "skills.html", "inspirations.html", "services.html", "order.html"]
+# v3.4 primary navigation: Home · Work · About · Services · Contact.
+# "About" groups the story chapters (with a sub-nav on those pages); "Contact" is the order page.
+PRIMARY = [("index.html", "Home"), ("projects.html", "Work"), ("purpose.html", "About"), ("services.html", "Services"), ("order.html", "Contact")]
+ABOUT = ["purpose.html", "struggles.html", "skills.html", "inspirations.html"]
+
+def primary_of(cur):
+    """Which primary nav item a page belongs to."""
+    if cur in ABOUT or cur.startswith("skills/"): return "purpose.html"
+    return cur
+
+def nav_current(f, cur):
+    if f == cur: return ' aria-current="page"'
+    return ' aria-current="true"' if f == primary_of(cur) else ""
 
 # ---------------------------------------------------------------- media
 M = "assets/media/"
@@ -179,11 +191,7 @@ def head(title, desc, path, p):
 '''
 
 def header(current, p):
-    links = []
-    for f in NAV_ORDER:
-        c = next(c for c in CHAPTERS if c[0] == f)
-        cur = ' aria-current="page"' if f == current else ""
-        links.append(f'<a href="{p}{f}"{cur}>{c[1]}</a>')
+    links = [f'<a href="{p}{f}"{nav_current(f, current)}>{label}</a>' for f, label in PRIMARY]
     return f'''<a class="skip" href="#main">Skip to content</a>
 <div class="fx-tex" aria-hidden="true"></div>
 <header class="site-head">
@@ -257,6 +265,7 @@ def settings_panel():
       <label class="tog"><input type="checkbox" name="motion"><span class="tog-ui" aria-hidden="true"></span><span>Reduce motion</span></label>
       <label class="tog"><input type="checkbox" name="links"><span class="tog-ui" aria-hidden="true"></span><span>Underline all links</span></label>
       <label class="tog"><input type="checkbox" name="idle" checked><span class="tog-ui" aria-hidden="true"></span><span>Idle showreel (screensaver)</span></label>
+      <label class="tog"><input type="checkbox" name="intro" checked><span class="tog-ui" aria-hidden="true"></span><span>Play the intro (3 seconds)</span></label>
       <div class="row-ctl"><button type="button" class="btn btn--small" data-read>{ico("speech")}<span data-read-label>Read this page aloud</span></button>
         <button type="button" class="btn btn--small btn--ghost" data-reset>{ico("rotate-ccw")}Reset</button></div>
       <p class="mini muted">Works with TalkBack, VoiceOver and NVDA. Shortcuts: <kbd>Esc</kbd> menu · <kbd>S</kbd> settings · <kbd>M</kbd> music.</p>
@@ -265,12 +274,17 @@ def settings_panel():
 </div>'''
 
 def pause_menu(current, p):
-    items = ['<li><button type="button" data-resume><span class="num">▸</span>Resume</button></li>',
-             f'<li><a href="{p}index.html"{" aria-current=page" if current == "index.html" else ""}><span class="num">00</span>Home</a></li>']
-    for f, label, roman, title, d, icon in CHAPTERS:
-        cur = ' aria-current="page"' if f == current else ""
-        items.append(f'<li><a href="{p}{f}"{cur}><span class="num">{roman}</span>{title}</a></li>')
+    items = ['<li><button type="button" data-resume><span class="num">▸</span>Resume</button></li>']
+    def sub_cur(f):
+        return ' aria-current="page"' if f == current or (f == "skills.html" and current.startswith("skills/")) else ""
+    for i, (f, label) in enumerate(PRIMARY):
+        sub = ""
+        if f == "purpose.html":   # About → its chapters: one level, always visible (no hidden fly-out)
+            sub = '<ul class="pause-sub">' + "".join(f'<li><a href="{p}{c[0]}"{sub_cur(c[0])}><span class="num">{c[2]}</span>{c[3]}</a></li>'
+                                                     for c in CHAPTERS if c[0] in ABOUT) + "</ul>"
+        items.append(f'<li><a href="{p}{f}"{nav_current(f, current) if f != "purpose.html" else (" aria-current=true" if primary_of(current) == f else "")}><span class="num">0{i + 1}</span>{label}</a>{sub}</li>')
     items.append(f'<li><a href="{p}90-day-progress/"><span class="num">↗</span>90 Day Progress</a></li>')
+    items.append(f'<li><a href="{p}play.html"{" aria-current=page" if current == "play.html" else ""}><span class="num">✦</span>Lighthouse game</a></li>')
     items.append('<li><button type="button" data-panel-open><span class="num">⚙</span>Settings</button></li>')
     return f'''<div class="pause" id="pause" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
   <div class="pause-card">
@@ -295,10 +309,11 @@ def intro():
     <p class="intro-k" aria-hidden="true">ザ・アーミル・シェイク</p>
     <h2 id="intro-t" class="intro-t"><span>THE AAMIR SHEIKH</span><em>production</em></h2>
     <div class="intro-btns">
+      <button type="button" class="btn btn--ghost" data-enter="quiet">{ico("skip-forward")} Skip intro</button>
       <button type="button" class="btn btn--solid" data-enter="sound">{ico("headphones")} Enter with sound</button>
-      <button type="button" class="btn btn--ghost" data-enter="quiet">{ico("volume-x")} Enter quietly</button>
     </div>
-    <p class="mini intro-h">Change interface, music &amp; accessibility anytime with {ico("sliders-horizontal")} or the <kbd>S</kbd> key.</p>
+    <div class="intro-count" aria-hidden="true"><i></i></div>
+    <p class="mini intro-h">Continues quietly in 3 seconds</p>
   </div>
 </div>'''
 
@@ -317,7 +332,7 @@ def footer(p):
         </div>
       </div>
       <div class="col"><p class="label">Chapters</p><ul class="mt-s foot-list">{pages}</ul></div>
-      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
+      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}play.html">{ico("lighthouse")} Lighthouse game</a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
     </div>
     <div class="foot-base label">
       <span>© <span data-year>2026</span> {BRAND}</span>
@@ -348,9 +363,16 @@ def attract(p):
   <p class="at-hint label">Press any key or move to continue</p>
 </div>'''
 
+def about_nav(current, p):
+    """Secondary nav shown on the About pages (Story · Struggles · Skills · Inspirations)."""
+    def cur(f): return ' aria-current="page"' if f == current or (f == "skills.html" and current.startswith("skills/")) else ""
+    links = "".join(f'<a href="{p}{c[0]}"{cur(c[0])}>{ico(c[5])}<span>{c[3]}</span></a>' for c in CHAPTERS if c[0] in ABOUT)
+    return f'<nav class="subnav wrap" aria-label="About"><span class="label subnav-k">{ico("user-round")} About</span><div class="subnav-l">{links}</div></nav>\n'
+
 def page(path, title, desc, body, current=None, depth=0, home=False):
     p = "../" * depth
     cls = ' class="home"' if home else ""
+    if primary_of(current or path) == "purpose.html": body = about_nav(current or path, p) + body
     doc = (head(title, desc, path, p) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p)
            + settings_panel() + attract(p) + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + "</body>\n</html>\n")
     doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
@@ -899,21 +921,101 @@ def build_credits():
     page("credits.html", "Credits", "Music, photo, icon and font credits for theaamirsheikh.com.", body, current="credits.html")
 
 # ================================================================= 404
-def build_404():
-    body = f'''<section class="wrap lost">
-  <div>
-    <p class="label">{ico("skull")} Error 404</p>
-    <h1 class="mega mt-s">Lost from the pack.</h1>
-    <p class="lead muted mt-m" style="margin-inline:auto">This page got cut in the edit.</p>
-    <p class="mt-m"><a class="btn btn--solid" href="/">{ico("house")} Find the pack</a></p>
+# ---------------------------------------------------------------- lighthouse game (404 + play.html)
+LH_WORKS = [
+    # title, kind, image, link (into Work)
+    ("Money Follows", "Vertical ad · 4K", M + "money-follows.webp", "projects.html#reel"),
+    ("Liquid Death — spec", "Motion graphics", M + "liquid-death.webp", "projects.html#reel"),
+    ("Sundown Trail", "Game · in development", "assets/img/sundown-trail-pause.webp", "projects.html#sundown-trail"),
+    ("Blender Studies", "3D · lighting", B + "blender-2.webp", "projects.html#blender"),
+    ("Echo Balancer", "Robotics · eYRC", "assets/img/art-echo.webp", "projects.html#echo-balancer"),
+    ("Smart Bin", "IoT · SIH 2026", "assets/img/art-bin.webp", "projects.html#smart-bin"),
+]
+
+LH_TOWER = """<svg class="lh-tower" viewBox="0 0 120 300" aria-hidden="true" focusable="false">
+<path d="M0 300V279Q14 262 30 270Q44 254 62 266Q80 252 96 268Q110 262 120 276V300Z" fill="#131720"/>
+<path d="M40 272 48 112H72L80 272Z" fill="#2a2e3a"/>
+<path class="lh-stripe" d="M45.2 168 46.5 142H73.5L74.8 168Z"/><path class="lh-stripe" d="M42.3 226 43.6 200H76.4L77.7 226Z"/>
+<path d="M56 272V258Q60 251 64 258V272Z" fill="#0e1118"/>
+<rect x="42" y="104" width="36" height="8" fill="#1d212b"/>
+<path d="M42 104V96M51 104V96M60 104V96M69 104V96M78 104V96M42 96H78" stroke="#3b404e" stroke-width="1.6" fill="none"/>
+<rect x="49" y="74" width="22" height="30" fill="#1a1d26"/><rect x="52" y="78" width="16" height="22" fill="#ffe6a6" opacity=".85"/>
+<circle class="lh-lamp" cx="60" cy="89" r="6"/>
+<path d="M46 76Q60 56 74 76Z" fill="#2a2e3a"/><path d="M60 61V50" stroke="#3b404e" stroke-width="2"/>
+</svg>"""
+
+def build_game(path, p):
+    lost = path == "404.html"
+    works = [{"t": t, "k": k, "img": p + img, "href": p + href} for t, k, img, href in LH_WORKS]
+    if lost:
+        intro_html = f'''<p class="label">{ico("skull")} Error 404</p>
+      <h1 class="h-xl">Lost from the pack.</h1>
+      <p class="lead">This page got cut in the edit.</p>
+      <p class="lead">The lighthouse is on. Find the 6 hidden works in the dark.</p>'''
+    else:
+        intro_html = f'''<p class="label">{ico("lighthouse")} Side quest</p>
+      <h1 class="h-xl">The lighthouse.</h1>
+      <p class="lead">Six of my works are hidden in the dark. You have 45 seconds.</p>'''
+    body = f'''<section class="wrap lh" data-lh data-works=\'{esc(json.dumps(works, ensure_ascii=False))}\'>
+  <div class="lh-stage" data-lh-stage tabindex="0" role="group" aria-label="Lighthouse game" aria-describedby="lh-help">
+    <div class="lh-sea" aria-hidden="true"></div>
+    <div class="lh-works" aria-hidden="true"></div>
+    <div class="lh-dark" aria-hidden="true"></div>
+    <div class="lh-glow" aria-hidden="true"></div>
+    <svg class="lh-beam" aria-hidden="true" focusable="false"><defs><linearGradient id="lh-g" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe2a0" stop-opacity=".42"/><stop offset="1" stop-color="#ffe2a0" stop-opacity=".07"/></linearGradient></defs><polygon fill="url(#lh-g)" points="0,0 0,0 0,0 0,0"/></svg>
+    {LH_TOWER}
+    <div class="lh-glints" aria-hidden="true"></div>
+    <div class="lh-hud" aria-hidden="true">
+      <span class="pill" data-lh-tpill>{ico("clock")} <b data-lh-time>45.0</b></span>
+      <span class="pill">{ico("eye")} <b data-lh-count>0/6</b></span>
+      <span class="pill">{ico("trophy")} <span>Best</span> <b data-lh-best>—</b></span>
+    </div>
+    <div class="lh-panel" data-lh-card>
+      <div>
+      {intro_html}
+      <div class="m-links">
+        <button type="button" class="btn btn--solid" data-lh-start>{ico("search")} Start the search</button>
+        <a class="btn" href="{p}index.html">{ico("house")} Find the pack</a>
+        <a class="btn" href="{p}projects.html">{ico("clapperboard")} See all work</a>
+      </div>
+      <p class="mini" id="lh-help">Move the light with your mouse or finger. Hold it on a work to collect it. Keyboard: arrow keys move the light, Enter collects.</p>
+      </div>
+    </div>
+    <div class="lh-panel" data-lh-end hidden>
+      <div>
+      <p class="lh-rank" aria-hidden="true"><b data-lh-rank>S</b><span data-lh-rank-w>Stylish</span></p>
+      <h2 class="h-l" data-lh-end-h tabindex="-1">All 6 found!</h2>
+      <p class="lead" data-lh-end-s></p>
+      <ul class="lh-endlist" data-lh-endlist></ul>
+      <div class="m-links">
+        <button type="button" class="btn btn--solid" data-lh-start>{ico("rotate-ccw")} Play again</button>
+        <a class="btn" href="{p}projects.html">{ico("clapperboard")} See all work</a>
+        <a class="btn" href="{p}index.html">{ico("house")} Find the pack</a>
+      </div>
+      </div>
+    </div>
+  </div>
+  <div class="lh-tray">
+    <p class="label">{ico("star")} Found works</p>
+    <ul data-lh-found><li class="none">Nothing found yet.</li></ul>
   </div>
 </section>'''
-    doc = head("Lost", "Page not found.", "404.html", "/") + '<body>\n' + header("", "/") + pause_menu("", "/") + settings_panel() + f'<main id="main" tabindex="-1">{body}</main>\n' + footer("/") + "</body>\n</html>\n"
-    with open(os.path.join(ROOT, "404.html"), "w", encoding="utf-8") as f: f.write(doc)
-    print("wrote 404.html")
+    if lost:
+        doc = (head("Lost", "Page not found. Find six hidden works in the dark with the lighthouse.", "404.html", p).replace("<title>", '<meta name="robots" content="noindex">\n<title>', 1)
+               + "<body>\n" + header("", p) + pause_menu("", p) + settings_panel() + attract(p)
+               + f'<main id="main" tabindex="-1">{body}</main>\n' + footer(p) + "</body>\n</html>\n")
+        doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
+        with open(os.path.join(ROOT, path), "w", encoding="utf-8") as f: f.write(doc)
+        print("wrote", path)
+    else:
+        page(path, "Lighthouse game", "A tiny side quest: move the lighthouse beam and find six of THE AAMIR SHEIKH’s works hidden in the dark.", body, current="play.html")
+
+def build_404():
+    build_game("404.html", "/")
+    build_game("play.html", "")
 
 def write_sitemap():
-    pages = ["", "purpose.html", "struggles.html", "skills.html", "projects.html", "inspirations.html", "services.html", "order.html", "credits.html", "90-day-progress/"] + [f"skills/{s[0]}.html" for s in SKILLS]
+    pages = ["", "purpose.html", "struggles.html", "skills.html", "projects.html", "inspirations.html", "services.html", "order.html", "credits.html", "play.html", "90-day-progress/"] + [f"skills/{s[0]}.html" for s in SKILLS]
     urls = "".join(f"<url><loc>{SITE}/{p}</loc></url>" for p in pages)
     open(os.path.join(ROOT, "sitemap.xml"), "w").write(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
 
@@ -930,6 +1032,11 @@ def write_i18n():
     if miss2: print("WARNING missing zh/ko:", miss2[:10])
     for i, code in enumerate(("zh", "ko")):
         data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
+    import i18n_p0   # v3.4 strings, all 8 languages in one row
+    for row in i18n_p0.P:
+        assert len(row) == 9, row[0]
+        for code, val in zip(("de", "fr", "ja", "es", "ru", "ar", "zh", "ko"), row[1:]):
+            data[code][row[0]] = val
     js = "/* Translations (EN → DE / FR / JA). Generated from _build/i18n.py */\nwindow.TAS_I18N=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
     open(os.path.join(ROOT, "assets", "js", "i18n.js"), "w", encoding="utf-8").write(js)
     print("wrote assets/js/i18n.js", sum(len(v) for v in data.values()), "strings")

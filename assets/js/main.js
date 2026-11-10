@@ -18,10 +18,12 @@
     noir: { name: "Noir", music: "Smooth Jazz", color: "#0e1424" },
     village: { name: "Village", music: "Ambient Village", color: "#efe6d2" }
   };
-  var DEF = { ui: "riot", track: "riot", link: true, vol: 55, sfx: true, amb: false, cvd: "none", bright: 100, text: 100, motion: "", links: false, music: false, lang: "en", idle: true, uiPicked: false };
+  var DEF = { ui: "riot", track: "riot", link: true, vol: 55, sfx: false, amb: false, cvd: "none", bright: 100, text: 100, motion: "", links: false, music: false, lang: "en", idle: true, uiPicked: false, intro: true, v: 2 };
   var S = {};
   try { S = JSON.parse(localStorage.getItem("tas") || "{}"); } catch (e) { S = {}; }
+  var oldSave = S.v;
   Object.keys(DEF).forEach(function (k) { if (S[k] === undefined) S[k] = DEF[k]; });
+  if (oldSave === undefined) S.sfx = false;   /* v3.4: sound starts off; saves from before v3.4 had click sounds on by default */
   function timeUI() { var h = new Date().getHours(); return h >= 5 && h < 12 ? "village" : h >= 12 && h < 18 ? "riot" : "noir"; }
   if (!S.uiPicked) { S.ui = timeUI(); if (S.link) S.track = S.ui; }
   if (!UI[S.ui]) S.ui = "riot";
@@ -236,7 +238,7 @@
     var tk = $("[data-tracks]", panel); if (tk) tk.style.opacity = S.link ? .5 : 1;
     var f = function (n) { return $('input[name="' + n + '"]', panel); };
     f("link").checked = !!S.link; f("sfx").checked = !!S.sfx; f("amb").checked = !!S.amb; f("vol").value = S.vol;
-    f("motion").checked = S.motion === "reduce"; f("links").checked = !!S.links; if (f("idle")) f("idle").checked = S.idle !== false; if (f("auto")) f("auto").checked = !S.uiPicked;
+    f("motion").checked = S.motion === "reduce"; f("links").checked = !!S.links; if (f("idle")) f("idle").checked = S.idle !== false; if (f("intro")) f("intro").checked = S.intro !== false; if (f("auto")) f("auto").checked = !S.uiPicked;
     f("bright").value = S.bright; $("#bright-v").textContent = S.bright + "%";
     f("text").value = S.text; $("#text-v").textContent = S.text + "%";
     $$('input[name="cvd"]', panel).forEach(function (i) { i.checked = i.value === (S.cvd || "none"); });
@@ -278,6 +280,7 @@
       else if (n === "motion") { S.motion = t.checked ? "reduce" : ""; save(); applyVisual(); }
       else if (n === "links") { S.links = t.checked; save(); applyVisual(); }
       else if (n === "idle") { S.idle = t.checked; save(); }
+      else if (n === "intro") { S.intro = t.checked; save(); }
     });
     panel.addEventListener("input", function (e) {
       var t = e.target, n = t.name;
@@ -400,19 +403,30 @@
   /* ===================================================== intro (first visit each session) */
   var intro = $("#intro");
   function ready() { root.classList.add("ready"); heroVideo(); }
+  /* v3.4: the intro lasts 3 seconds, then continues quietly on its own.
+     Skip is on screen from the first frame; pointing at a button or pressing Tab pauses the countdown. */
+  var introT = null, introLeft = 3000, introAt = 0, introKeys = false;
+  function introRun() { if (!intro || intro.hidden || introT) return; introAt = Date.now(); intro.classList.remove("held"); introT = setTimeout(function () { enter("quiet"); }, introLeft); }
+  function introHold() { if (!introT) return; clearTimeout(introT); introT = null; introLeft = Math.max(500, introLeft - (Date.now() - introAt)); intro.classList.add("held"); }
   function enter(mode) {
     if (!intro || intro.hidden) return;
+    clearTimeout(introT); introT = null;
     ss("tasIntro", "1"); unlock();
     if (mode === "sound") { S.sfx = true; save(); playMusic(); } else { stopMusic(); }
     intro.classList.add("out");
-    setTimeout(function () { intro.hidden = true; intro.classList.remove("out"); root.style.overflow = ""; ready(); var m = $("#main"); if (m) m.focus({ preventScroll: true }); }, reduced() ? 0 : 650);
+    setTimeout(function () { intro.hidden = true; intro.classList.remove("out"); root.style.overflow = ""; ready(); var m = $("#main"); if (m) m.focus({ preventScroll: true }); }, reduced() ? 0 : 430);
   }
-  if (intro && !ss("tasIntro")) {
+  if (intro && !ss("tasIntro") && S.intro !== false) {
     intro.hidden = false; root.style.overflow = "hidden";
     if (!reduced()) intro.classList.add("play");
-    $$("[data-enter]", intro).forEach(function (b) { b.addEventListener("click", function () { enter(b.getAttribute("data-enter")); }); });
-    intro.addEventListener("keydown", function (e) { trap(intro, e); });
-    setTimeout(function () { var b = $("[data-enter]", intro); if (b) b.focus(); }, reduced() ? 0 : 1500);
+    $$("[data-enter]", intro).forEach(function (b) {
+      b.addEventListener("click", function () { enter(b.getAttribute("data-enter")); });
+      b.addEventListener("pointerenter", function (e) { if (e.pointerType === "mouse") introHold(); });
+      b.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse" && !introKeys) introRun(); });
+    });
+    intro.addEventListener("keydown", function (e) { if (e.key === "Tab") { introKeys = true; introHold(); } trap(intro, e); });
+    var firstBtn = $("[data-enter]", intro); if (firstBtn) firstBtn.focus({ preventScroll: true });
+    introRun();
   } else ready();
 
   /* ===================================================== hero */
@@ -619,8 +633,18 @@
     }
     refresh();
     $$("[data-send]", form).forEach(function (b) { b.addEventListener("click", function () { sendKind = b.getAttribute("data-send"); }); });
+    /* v3.4: one message per press — the send buttons lock while sending, and after a successful
+       send they stay locked until the visitor changes something (so a double tap can't send twice) */
+    var busy = false, sentLock = false;
+    var lock = function (on) {
+      busy = on; form.setAttribute("aria-busy", on ? "true" : "false");
+      $$("[data-send]", form).forEach(function (b) { b.disabled = on; });
+    };
+    form.addEventListener("input", function () { if (sentLock) { sentLock = false; lock(false); } });
+    form.addEventListener("change", function () { if (sentLock) { sentLock = false; lock(false); } });
     form.addEventListener("submit", function (e) {
       e.preventDefault();
+      if (busy) return;
       status.className = "form-status"; status.textContent = "";
       var isOrder = form.getAttribute("data-form") === "order";
       if (isOrder) {
@@ -633,19 +657,20 @@
       }
       var msg = compose(form);
       if (sendKind === "whatsapp") {
+        lock(true); setTimeout(function () { if (!sentLock) lock(false); }, 2500);
         window.open("https://wa.me/" + WA + "?text=" + encodeURIComponent(msg), "_blank", "noopener");
         status.textContent = T("WhatsApp opened with your message — press send there. ✅"); status.classList.add("ok"); sfx("switch");
         return;
       }
-      status.textContent = T("Sending to Gmail…");
+      lock(true); status.textContent = T("Sending to Gmail…");
       fetch("https://formsubmit.co/ajax/" + MAIL, {
         method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ _subject: (isOrder ? "🧾 New order" : "⭐ New feedback") + " — THE AAMIR SHEIKH", _template: "box", _captcha: "false", name: field(form, "name") || "Website visitor", contact: field(form, "contact") || "—", message: msg })
       }).then(function (r) { return r.json(); }).then(function (j) {
-        if (j && (j.success === "true" || j.success === true)) { status.textContent = T("Sent! I’ll get back to you soon. ✅"); status.classList.add("ok"); sfx("switch"); }
+        if (j && (j.success === "true" || j.success === true)) { sentLock = true; status.textContent = T("Sent! I’ll get back to you soon. ✅"); status.classList.add("ok"); sfx("switch"); }
         else throw new Error("fail");
       }).catch(function () {
-        status.innerHTML = "";
+        lock(false); status.innerHTML = "";
         var a = doc.createElement("a"); a.className = "link"; a.href = "mailto:" + MAIL + "?subject=" + encodeURIComponent(isOrder ? "New order — THE AAMIR SHEIKH" : "Feedback — THE AAMIR SHEIKH") + "&body=" + encodeURIComponent(msg);
         a.textContent = T("open your email app instead"); status.append(T("Couldn’t send from the page — "), a, T(" (message is ready)."));
         status.classList.add("err");
@@ -715,7 +740,7 @@
       var a = doc.activeElement, tag = a && a.tagName;
       return doc.hidden || reading || S.idle === false || (intro && !intro.hidden) ||
         (player && player.classList.contains("open")) || (panel && panel.classList.contains("open")) ||
-        (pause && pause.classList.contains("open")) || tag === "INPUT" || tag === "TEXTAREA";
+        (pause && pause.classList.contains("open")) || tag === "INPUT" || tag === "TEXTAREA" || root.classList.contains("lh-on");
     }
     function arm() { clearTimeout(timer); timer = setTimeout(function () { if (busy()) arm(); else start(); }, IDLE); }
     function showClip() {
@@ -755,6 +780,163 @@
       window.addEventListener(ev, function (e) { if (on) { if (ev === "keydown") e.preventDefault(); stop(); } else arm(); }, { passive: ev !== "keydown", capture: true });
     });
     arm();
+  })();
+
+  /* ===================================================== Lighthouse game (404 + play.html)
+     The stage is dark; a lighthouse beam lights a circle around the pointer / finger / arrow keys.
+     Six works hide in the dark — hold the light on one (or click it while lit) to collect it. */
+  (function lighthouse() {
+    var box = $("[data-lh]"); if (!box) return;
+    var stage = $("[data-lh-stage]", box), layer = $(".lh-works", stage), beam = $(".lh-beam", stage), poly = $("polygon", beam), grad = $("linearGradient", beam),
+        lamp = $(".lh-lamp", stage), tower = $(".lh-tower", stage), glints = $(".lh-glints", stage),
+        card = $("[data-lh-card]", box), endp = $("[data-lh-end]", box), tray = $("[data-lh-found]", box),
+        hudT = $("[data-lh-time]", box), hudTP = $("[data-lh-tpill]", box), hudF = $("[data-lh-count]", box), hudB = $("[data-lh-best]", box);
+    var WORKS = []; try { WORKS = JSON.parse(box.getAttribute("data-works")) || []; } catch (e) { return; }
+    var LIMIT = 45, DWELL = 450, N = WORKS.length;
+    var W = 0, H = 0, lr = 100, lx = 0, ly = 0, tx = 0, ty = 0, raf = null, on = false, t0 = 0, tick = null, items = [], got = 0, lastFind = 0, lastHint = 0, lampX = 0, lampY = 0;
+    var best = null; try { best = parseFloat(localStorage.getItem("tasLH")) || null; } catch (e) {}
+    var RL = ["D", "C", "B", "A", "S", "SS", "SSS"], RW = ["Dull", "Cool", "Bravo", "Absolute", "Stylish", "Sensational", "Smokin' Sexy Style"];
+    function fx(s, n, t) { return T(s).replace("{n}", n).replace("{t}", t); }
+    function fmt(s) { return (Math.round(s * 10) / 10).toFixed(1); }
+    function showBest() { hudB.textContent = best ? fmt(best) + "s" : "—"; }
+    function measure() {
+      var r = stage.getBoundingClientRect(); W = r.width; H = r.height;
+      lr = Math.max(60, Math.min(124, Math.min(W, H) * .17));
+      stage.style.setProperty("--lr", lr.toFixed(0) + "px");
+      beam.setAttribute("viewBox", "0 0 " + W.toFixed(0) + " " + H.toFixed(0));
+      if (lamp) { var lb = lamp.getBoundingClientRect(); lampX = lb.left + lb.width / 2 - r.left; lampY = lb.top + lb.height / 2 - r.top; }
+    }
+    function drawBeam() {
+      var dx = lx - lampX, dy = ly - lampY, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d, w = lr * .9;
+      var pts = [[lampX + nx * 3, lampY + ny * 3], [lx + nx * w, ly + ny * w], [lx - nx * w, ly - ny * w], [lampX - nx * 3, lampY - ny * 3]];
+      poly.setAttribute("points", pts.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" "));
+      grad.setAttribute("x1", lampX.toFixed(1)); grad.setAttribute("y1", lampY.toFixed(1)); grad.setAttribute("x2", lx.toFixed(1)); grad.setAttribute("y2", ly.toFixed(1));
+    }
+    function lit(it, f) { return Math.hypot(it.fx * W - lx, it.fy * H - ly) < lr * f; }
+    function check() {
+      var now = performance.now();
+      items.forEach(function (it) {
+        if (it.got) return;
+        if (lit(it, .55)) {
+          if (!it.since) it.since = now;
+          var p = Math.min(1, (now - it.since) / DWELL); it.el.style.setProperty("--p", p.toFixed(3));
+          if (p >= 1) collect(it);
+        } else if (it.since) { it.since = 0; it.el.style.setProperty("--p", "0"); }
+      });
+      if (on && now - lastFind > 8000 && now - lastHint > 4500) hint(now);
+    }
+    function paint() {
+      var k = reduced() ? 1 : .35;
+      lx += (tx - lx) * k; ly += (ty - ly) * k;
+      stage.style.setProperty("--lx", lx.toFixed(1) + "px"); stage.style.setProperty("--ly", ly.toFixed(1) + "px");
+      drawBeam(); if (on) check();
+      raf = (on || Math.abs(tx - lx) + Math.abs(ty - ly) > .5) ? requestAnimationFrame(paint) : null;
+    }
+    function kick() { if (!raf) raf = requestAnimationFrame(paint); }
+    function aim(x, y) { tx = Math.max(0, Math.min(W, x)); ty = Math.max(0, Math.min(H, y)); kick(); }
+    function fromEvent(e) { var r = stage.getBoundingClientRect(); aim(e.clientX - r.left, e.clientY - r.top); }
+    stage.addEventListener("pointermove", fromEvent, { passive: true });
+    stage.addEventListener("pointerdown", fromEvent, { passive: true });
+    function place() {
+      layer.innerHTML = ""; items = [];
+      var pw = Math.max(62, Math.min(112, W * .11)), ph = pw * 1.25;
+      var sr = stage.getBoundingClientRect(), tb = tower.getBoundingClientRect();
+      var tR = tb.right - sr.left + 16, tT = tb.top - sr.top - 16, topY = 64 + ph / 2, pts = [];
+      WORKS.forEach(function (w) {
+        var x = W / 2, y = H / 2, ok = false, tries = 0;
+        while (!ok && tries++ < 400) {
+          x = pw / 2 + 12 + Math.random() * Math.max(1, W - pw - 24);
+          y = topY + Math.random() * Math.max(1, H - topY - ph / 2 - 12);
+          ok = !(x - pw / 2 < tR && y + ph / 2 > tT) && Math.hypot(x - W / 2, y - H / 2) > lr * 1.3 && pts.every(function (p) { return Math.abs(p[0] - x) > pw * 1.15 || Math.abs(p[1] - y) > ph * 1.1; });
+        }
+        pts.push([x, y]);
+        var el = doc.createElement("figure"); el.className = "lh-w";
+        el.style.setProperty("--fx", (x / W).toFixed(4)); el.style.setProperty("--fy", (y / H).toFixed(4));
+        el.style.setProperty("--pw", pw.toFixed(0) + "px"); el.style.setProperty("--rot", (Math.random() * 16 - 8).toFixed(1) + "deg");
+        var img = doc.createElement("img"); img.src = w.img; img.alt = ""; img.decoding = "async"; img.draggable = false; el.appendChild(img);
+        layer.appendChild(el);
+        var it = { w: w, el: el, fx: x / W, fy: y / H, got: false, since: 0 };
+        el.addEventListener("click", function () { if (on && !it.got && lit(it, .95)) collect(it); });
+        items.push(it);
+      });
+    }
+    function ping(n) {
+      if (!S.sfx || !ctx()) return; unlocked = true; if (actx.state === "suspended") actx.resume();
+      tone("sine", 620 + n * 80, 0, .4, .09); tone("triangle", 1240 + n * 160, 0, .28, .035, .05);
+    }
+    function hint(now) {
+      lastHint = now;
+      var left = items.filter(function (it) { return !it.got; }); if (!left.length) return;
+      var it = left[Math.floor(Math.random() * left.length)], g = doc.createElement("i");
+      g.style.left = (it.fx * 100).toFixed(2) + "%"; g.style.top = (it.fy * 100).toFixed(2) + "%";
+      glints.appendChild(g); setTimeout(function () { g.remove(); }, 1500);
+    }
+    function hud() {
+      if (!on) return;
+      var left = Math.max(0, LIMIT - (performance.now() - t0) / 1000);
+      hudT.textContent = fmt(left); hudTP.classList.toggle("low", left <= 10);
+      hudF.textContent = got + "/" + N;
+      if (left <= 0) finish(false);
+    }
+    function collect(it) {
+      it.got = true; it.since = 0; got++; lastFind = performance.now();
+      it.el.classList.add("got"); it.el.style.setProperty("--p", "1");
+      if (got === 1) tray.innerHTML = "";
+      var li = doc.createElement("li"), a = doc.createElement("a"), im = doc.createElement("img");
+      a.href = it.w.href; im.src = it.w.img; im.alt = ""; a.appendChild(im); a.appendChild(doc.createTextNode(it.w.t)); li.appendChild(a); tray.appendChild(li);
+      announce(T("Found") + ": " + it.w.t + ". " + fx("{n} of 6 found", got));
+      ping(got); hudF.textContent = got + "/" + N;
+      if (got >= N) finish(true);
+    }
+    function start() {
+      measure(); place();
+      card.hidden = true; endp.hidden = true;
+      got = 0; tray.innerHTML = ""; var none = doc.createElement("li"); none.className = "none"; none.textContent = T("Nothing found yet."); tray.appendChild(none);
+      on = true; root.classList.add("lh-on"); stage.classList.add("on");
+      t0 = performance.now(); lastFind = t0; lastHint = t0;
+      if (!tx && !ty) aim(W / 2, H / 2);
+      clearInterval(tick); tick = setInterval(hud, 100); hud();
+      stage.focus({ preventScroll: true });
+      var r = stage.getBoundingClientRect(); if (r.top < 0 || r.bottom > window.innerHeight) stage.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
+      kick(); sfx("open");
+    }
+    function finish(won) {
+      if (!on) return;
+      on = false; clearInterval(tick); root.classList.remove("lh-on"); stage.classList.remove("on");
+      var secs = (performance.now() - t0) / 1000, i;
+      if (won) i = secs <= 12 ? 6 : secs <= 16 ? 5 : secs <= 21 ? 4 : secs <= 27 ? 3 : secs <= 34 ? 2 : 1;
+      else i = got >= 5 ? 1 : 0;
+      $("[data-lh-rank]", endp).textContent = RL[i]; $("[data-lh-rank-w]", endp).textContent = RW[i];
+      var h = $("[data-lh-end-h]", endp), s = $("[data-lh-end-s]", endp), line = [fx("{n} of 6 found", got)];
+      h.textContent = won ? T("All 6 found!") : T("Time’s up!");
+      if (won) {
+        line.push(fx("Time: {t} s", got, fmt(secs)));
+        if (!best || secs < best) { best = secs; try { localStorage.setItem("tasLH", String(best)); } catch (e) {} line.push(T("New best!")); }
+        else line.push(fx("Best: {t} s", got, fmt(best)));
+      }
+      s.textContent = line.join(" · "); showBest();
+      var list = $("[data-lh-endlist]", endp); list.innerHTML = "";
+      items.forEach(function (it) { var li = doc.createElement("li"), a = doc.createElement("a"); a.href = it.w.href; if (!it.got) a.className = "miss"; a.textContent = (it.got ? "✓ " : "") + it.w.t; li.appendChild(a); list.appendChild(li); });
+      endp.hidden = false; h.focus({ preventScroll: true });
+      announce(h.textContent + " " + s.textContent);
+      sfx(won ? "switch" : "close");
+    }
+    $$("[data-lh-start]", box).forEach(function (b) { b.addEventListener("click", function () { unlock(); start(); }); });
+    stage.addEventListener("keydown", function (e) {
+      var k = e.key, step = e.shiftKey ? 64 : 24;
+      if (k === "ArrowLeft" || k === "ArrowRight" || k === "ArrowUp" || k === "ArrowDown") {
+        if (e.target !== stage && !on) return;
+        e.preventDefault();
+        aim(tx + (k === "ArrowLeft" ? -step : k === "ArrowRight" ? step : 0), ty + (k === "ArrowUp" ? -step : k === "ArrowDown" ? step : 0));
+      } else if ((k === "Enter" || k === " ") && on && e.target === stage) {
+        e.preventDefault();
+        var near = null, dmin = 1e9;
+        items.forEach(function (it) { if (it.got) return; var d = Math.hypot(it.fx * W - lx, it.fy * H - ly); if (d < dmin) { dmin = d; near = it; } });
+        if (near && dmin < lr * .95) collect(near);
+      }
+    });
+    var rT = null; window.addEventListener("resize", function () { clearTimeout(rT); rT = setTimeout(function () { measure(); aim(tx, ty); }, 120); });
+    measure(); tx = lx = W * .62; ty = ly = H * .4; showBest(); kick();
   })();
 
   /* ===================================================== boot */

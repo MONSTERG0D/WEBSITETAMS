@@ -6,3 +6,7 @@ _old_site_backup/
 ._*
 assets/media/money follows*.mp4
 __pycache__/
+
+# Blender sources, renders and concepts stay on this computer
+_source_3d/
+_test3d.html
