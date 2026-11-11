@@ -939,6 +939,63 @@
     measure(); tx = lx = W * .62; ty = ly = H * .4; showBest(); kick();
   })();
 
+  /* ===================================================== micro-interactions (v3.5) */
+  (function micro() {
+    // reading progress along the top edge
+    var bar = doc.createElement("i"); bar.className = "scroll-prog"; bar.setAttribute("aria-hidden", "true"); doc.body.appendChild(bar);
+    var nums = $$(".big-num"), ticking = false;
+    function onScroll() {
+      ticking = false;
+      var max = doc.documentElement.scrollHeight - window.innerHeight, y = window.scrollY;
+      bar.style.transform = "scaleX(" + (max > 0 ? Math.min(1, y / max) : 0) + ")";
+      if (!reduced()) nums.forEach(function (n) { var r = n.parentNode.getBoundingClientRect(); n.style.transform = "translate3d(0," + (-r.top * .12).toFixed(1) + "px,0)"; });
+    }
+    window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+    onScroll();
+    // ink press on buttons
+    doc.addEventListener("pointerdown", function (e) {
+      var b = e.target.closest && e.target.closest(".btn"); if (!b || reduced()) return;
+      var r = b.getBoundingClientRect(), k = doc.createElement("span"); k.className = "fx-ink"; k.setAttribute("aria-hidden", "true");
+      k.style.left = (e.clientX - r.left) + "px"; k.style.top = (e.clientY - r.top) + "px"; b.appendChild(k); setTimeout(function () { k.remove(); }, 650);
+    }, { passive: true });
+    if (!canHover) return;
+    // buttons lean toward the pointer
+    $$(".btn").forEach(function (b) {
+      b.addEventListener("pointermove", function (e) { if (reduced()) return; var r = b.getBoundingClientRect(); b.style.transform = "translate(" + ((e.clientX - r.left - r.width / 2) * .22).toFixed(1) + "px," + ((e.clientY - r.top - r.height / 2) * .3).toFixed(1) + "px)"; });
+      b.addEventListener("pointerleave", function () { b.style.transform = ""; });
+    });
+    // work tiles tilt under the pointer, with a moving sheen
+    $$(".tile, .clip-a").forEach(function (t) {
+      var g = doc.createElement("i"); g.className = "fx-glare"; g.setAttribute("aria-hidden", "true"); t.appendChild(g); t.classList.add("fx-tilt");
+      t.addEventListener("pointermove", function (e) {
+        if (reduced()) return; var r = t.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        t.style.setProperty("--ry", ((x - .5) * 7).toFixed(2) + "deg"); t.style.setProperty("--rx", ((.5 - y) * 6).toFixed(2) + "deg");
+        t.style.setProperty("--gx", (x * 100).toFixed(1) + "%"); t.style.setProperty("--gy", (y * 100).toFixed(1) + "%");
+      });
+      t.addEventListener("pointerleave", function () { t.style.setProperty("--rx", "0deg"); t.style.setProperty("--ry", "0deg"); });
+    });
+    // the name drifts against the pointer, a little slower than the picture behind it
+    var rows = $$(".hero-title .ht-row");
+    if (rows.length) window.addEventListener("pointermove", function (e) {
+      if (reduced() || window.scrollY > window.innerHeight) return;
+      var x = e.clientX / window.innerWidth - .5, y = e.clientY / window.innerHeight - .5;
+      rows.forEach(function (r, i) { r.style.transform = "translate3d(" + (x * (i ? -14 : 10)).toFixed(1) + "px," + (y * (i ? -6 : 5)).toFixed(1) + "px,0)"; });
+    }, { passive: true });
+    // Riot: menu words scramble into place on hover (Latin-script languages only)
+    var GL = "!<>-_\\/[]{}=+*^?#";
+    $$(".nav a").forEach(function (a) {
+      var timer = null;
+      a.addEventListener("pointerenter", function () {
+        if (reduced() || S.ui !== "riot" || ["en", "de", "fr", "es"].indexOf(S.lang) < 0 || timer) return;
+        var txt = a.textContent, n = 0;
+        timer = setInterval(function () {
+          n += 1; a.textContent = txt.split("").map(function (ch, i) { return i < n || ch === " " ? ch : GL[Math.random() * GL.length | 0]; }).join("");
+          if (n >= txt.length) { clearInterval(timer); timer = null; a.textContent = txt; }
+        }, 28);
+      });
+    });
+  })();
+
   /* ===================================================== boot */
   applyVisual(); syncMusicUI();
 })();

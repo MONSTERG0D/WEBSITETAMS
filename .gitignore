@@ -10,3 +10,4 @@ __pycache__/
 # Blender sources, renders and concepts stay on this computer
 _source_3d/
 _test3d.html
+_test2d.html

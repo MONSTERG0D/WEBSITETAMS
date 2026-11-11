@@ -1057,3 +1057,21 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 /* Arabic letters must join — no letter-spacing on any UI text that can hold Arabic */
 :root[lang="ar"] :is(.pill, .btn, .chip > span, .hero-tags li, .facts dt, .notches-lbl, .rank span, .hero-rank span, .pause-foot, .pause-list a, .lh-rank span, .q-badge, .bgal figcaption, .subnav-l a, .at-hint, .foot-base, .tile-kind, .mini) { letter-spacing: 0; }
 @media (max-width: 360px) { .hero-kicker { letter-spacing: .02em; } }
+
+/* =====================================================================
+   v3.5 — micro-interactions
+   ===================================================================== */
+.scroll-prog { position: fixed; left: 0; top: 0; z-index: 90; width: 100%; height: 3px; background: var(--accent); transform: scaleX(0); transform-origin: left center; pointer-events: none; }
+[dir="rtl"] .scroll-prog { transform-origin: right center; }
+.btn { position: relative; overflow: hidden; }
+.fx-ink { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: currentColor; opacity: .28; pointer-events: none; animation: fxInk .65s var(--ease) forwards; }
+@keyframes fxInk { to { transform: scale(26); opacity: 0; } }
+.fx-tilt { transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .35s var(--ease); will-change: transform; }
+.fx-glare { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .3s; background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255,255,255,.2), rgba(255,255,255,0) 46%); }
+.fx-tilt:hover .fx-glare { opacity: 1; }
+.hero-title .ht-row { transition: transform .5s var(--ease); }
+.big-num { will-change: transform; }
+@media (prefers-reduced-motion: no-preference) { @view-transition { navigation: auto; } ::view-transition-old(root) { animation-duration: .22s; } ::view-transition-new(root) { animation-duration: .32s; } }
+:root[data-motion="reduce"] .fx-tilt { transform: none; } :root[data-motion="reduce"] .fx-glare, :root[data-motion="reduce"] .fx-ink { display: none; }
+@media (prefers-reduced-motion: reduce) { .fx-tilt { transform: none; } .fx-glare, .fx-ink { display: none; } }
+:root[data-cvd="contrast"] .fx-glare { display: none; }
