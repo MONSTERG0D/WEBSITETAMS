@@ -13,10 +13,10 @@ import { requireReady, getSession, cleanLang, requestMeta, now } from "../_lib/a
 import { CATALOG, quote } from "../_lib/catalog.js";
 import {
   newRef, cleanText, cleanBrief, cleanPhone, checkOrderLimits, itemName, timingName, serviceTitle, serviceUpsert,
-  auditStatement, estimateText, rupees, siteOrigin, FORM_BUDGETS,
+  auditStatement, estimateText, rupees, siteOrigin, logEmail, FORM_BUDGETS,
 } from "../_lib/orders.js";
-import { notifyOwner } from "../_lib/mail.js";
-import { receivedMail, payMail, mailCustomer } from "../_lib/ordermail.js";
+import { notifyOwnerResult } from "../_lib/mail.js";
+import { receivedMail, payMail, mailCustomer, safeMail } from "../_lib/ordermail.js";
 
 const bad = (code, msg) => new HttpError(400, code, msg);
 
@@ -107,26 +107,31 @@ export async function onRequestPost({ request, env, waitUntil }) {
   }
   if (!ref) throw new Error("could not find a free order reference");
 
-  // emails: the customer in their language, the owner in English. Neither may delay or break the order.
+  // emails: the customer in their language, the owner in English, one after the other (the email
+  // service allows about 2 a second). Neither may delay or break the order, and each result is
+  // written to the order's history so a failed email shows up in the admin page.
   const origin = siteOrigin(request);
-  const toCustomer = o.instant
-    ? payMail(lang, { ref, title: o.title, amountMinor: o.amount * 100, currency, n: 1, total: 1, origin })
-    : receivedMail(lang, { ref, title: o.title, free: o.info.free, origin });
-  const i = o.info, lines = [
-    `${o.instant ? "New order" : "New request"} ${ref}`, "",
-    "What: " + o.title,
-    ...(i.source === "form" ? ["From: the order form", ...(i.likes && i.likes.length ? ["Likes: " + i.likes.join(", ")] : []), ...(i.budget ? ["Budget: " + i.budget] : [])] : []),
-    "When: " + (timingName(i.timing) || "—"),
-    "Price: " + (o.instant ? rupees(o.amount * 100) + " (fixed, waiting for payment)" : i.free ? "free (first one) — accept it in the admin page" : estimateText(i.est) + " — set the price in the admin page"),
-    "", "Customer: " + (user.name || "—") + " · " + user.email,
-    ...(i.phone ? ["WhatsApp: " + i.phone] : []),
-    ...(i.name || i.contact ? ["On the form: " + [i.name, i.contact].filter(Boolean).join(" · ")] : []),
-    "", "Brief:", (o.brief || "—").slice(0, 1500),
-  ];
-  const notices = Promise.all([
-    mailCustomer(env, user.email, toCustomer),
-    notifyOwner(env, `${o.instant ? "New order" : "New request"} ${ref}: ${o.title}`, lines, `${origin}/admin.html?order=${ref}`),
-  ]).catch(() => {});
+  const notices = (async () => {
+    const toCustomer = safeMail(() => o.instant
+      ? payMail(lang, { ref, title: o.title, amountMinor: o.amount * 100, currency, n: 1, total: 1, origin })
+      : receivedMail(lang, { ref, title: o.title, free: o.info.free, origin }));
+    await logEmail(env, orderId, "customer", o.instant ? "pay" : "received", await mailCustomer(env, user.email, toCustomer));
+    const lines = safeMail(() => {
+      const i = o.info;
+      return [
+        `${o.instant ? "New order" : "New request"} ${ref}`, "",
+        "What: " + o.title,
+        ...(i.source === "form" ? ["From: the order form", ...(i.likes && i.likes.length ? ["Likes: " + i.likes.join(", ")] : []), ...(i.budget ? ["Budget: " + i.budget] : [])] : []),
+        "When: " + (timingName(i.timing) || "—"),
+        "Price: " + (o.instant ? rupees(o.amount * 100) + " (fixed, waiting for payment)" : i.free ? "free (first one) — accept it in the admin page" : estimateText(i.est) + " — set the price in the admin page"),
+        "", "Customer: " + (user.name || "—") + " · " + user.email,
+        ...(i.phone ? ["WhatsApp: " + i.phone] : []),
+        ...(i.name || i.contact ? ["On the form: " + [i.name, i.contact].filter(Boolean).join(" · ")] : []),
+        "", "Brief:", (o.brief || "—").slice(0, 1500),
+      ];
+    }) || [`New order ${ref}`, "Open it in the admin page."];
+    await logEmail(env, orderId, "owner", "new_order", await notifyOwnerResult(env, `${o.instant ? "New order" : "New request"} ${ref}: ${o.title}`, lines, `${origin}/admin.html?order=${ref}`));
+  })().catch((e) => console.error("order emails failed", e && e.stack));
   if (waitUntil) waitUntil(notices); else await notices;
 
   return json({ ok: true, order: { ref, status: o.status, instant: o.instant, free: o.info.free, amount_minor: o.amount === null ? null : o.amount * 100, currency } }, 201);

@@ -3,7 +3,7 @@
    pay       an amount is due now (a fixed-price order, a price the owner set, or the next part)
    accepted  the owner accepted a free order
    Each email links to the order on the account page. Never throws: a failed email must not undo an order. */
-import { sendMail } from "./mail.js";
+import { sendMailResult } from "./mail.js";
 
 const T = {
   en: { recS: "Request {ref} received", recH: "I got your request", recB: "I’ll read your brief and email you the price.", free: "Your first thumbnail is free.",
@@ -82,7 +82,15 @@ export function acceptedMail(lang, { ref, title, origin }) {
   return { subject: fill(t.okS, { ref }) + " — THE AAMIR SHEIKH", ...card(lang, { heading: t.okH, lines: [t.okB], title, ref, button: t.see, href: orderLink(origin, ref) }) };
 }
 
+/* Sends one customer email. Returns { ok, status, error }; never throws. */
 export async function mailCustomer(env, to, mail) {
-  if (!env.EMAIL_API_KEY || !env.MAIL_FROM || !to) return false;
-  try { return await sendMail(env, { to, subject: mail.subject, text: mail.text, html: mail.html }); } catch (e) { return false; }
+  if (!env.EMAIL_API_KEY || !env.MAIL_FROM) return { ok: false, status: 0, error: "email settings missing" };
+  if (!to || !mail) return { ok: false, status: 0, error: "nothing to send" };
+  try { return await sendMailResult(env, { to, subject: mail.subject, text: mail.text, html: mail.html }); }
+  catch (e) { console.error("customer email failed", e && e.stack); return { ok: false, status: 0, error: "could not send" }; }
+}
+
+/* Builds an email without ever throwing: a problem in an email must not undo an order. */
+export function safeMail(build) {
+  try { return build(); } catch (e) { console.error("could not build an order email", e && e.stack); return null; }
 }

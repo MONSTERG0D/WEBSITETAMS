@@ -1131,7 +1131,8 @@ def build_admin():
         <button type="button" class="btn btn--solid" data-ad-send><span data-ad-send-t data-no-i18n>Send the price</span></button>
       </section>
       <section data-ad-plan-box hidden><p class="label">{ico("layers")} Payment plan</p><ul class="acct-list ao-plan" data-ad-plan data-no-i18n></ul>
-        <button type="button" class="btn btn--small" data-ad-next hidden>Ask for the next part</button></section>
+        <div class="m-links"><button type="button" class="btn btn--small" data-ad-next hidden>Ask for the next part</button>
+        <button type="button" class="btn btn--small" data-ad-resend hidden>Email the pay link again</button></div></section>
       <section data-ad-moves hidden><p class="label">{ico("sliders-horizontal")} Status</p><div class="m-links" data-ad-move-btns data-no-i18n></div></section>
       <section><label class="fld"><span>Private note</span><textarea rows="3" maxlength="2000" data-ad-note></textarea></label>
         <p class="mini muted">Only you see this note.</p><button type="button" class="btn btn--small" data-ad-save-note>Save note</button></section>

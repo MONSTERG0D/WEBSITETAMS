@@ -4,8 +4,8 @@
    Someone else's order answers "not found", the same as an order that does not exist. */
 import { HttpError, json, readJson } from "../../_lib/http.js";
 import { requireReady, getSession, requestMeta, now } from "../../_lib/auth.js";
-import { cleanRef, pageInfo, liveParts, livePaymentCount, canCustomerCancel, auditStatement, siteOrigin } from "../../_lib/orders.js";
-import { notifyOwner } from "../../_lib/mail.js";
+import { cleanRef, pageInfo, liveParts, livePaymentCount, canCustomerCancel, auditStatement, siteOrigin, logEmail } from "../../_lib/orders.js";
+import { notifyOwnerResult } from "../../_lib/mail.js";
 
 async function own(request, env, ref) {
   requireReady(env);
@@ -47,9 +47,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
     auditStatement(env, { actor: "user", userId: session.user.id, action: "order.cancelled", orderId: order.id, ipHash: meta.ipHash, t, data: { from: order.status } }),
   ]);
   const origin = siteOrigin(request);
-  const notice = notifyOwner(env, `Cancelled by the customer: ${order.ref}`, [
+  const notice = notifyOwnerResult(env, `Cancelled by the customer: ${order.ref}`, [
     `${session.user.name || session.user.email} cancelled order ${order.ref}.`, "", "What: " + order.title, "Customer: " + session.user.email,
-  ], `${origin}/admin.html?order=${order.ref}`).catch(() => {});
+  ], `${origin}/admin.html?order=${order.ref}`).then((r) => logEmail(env, order.id, "owner", "cancelled", r)).catch(() => {});
   if (waitUntil) waitUntil(notice); else await notice;
   const fresh = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(order.id).first();
   return json({ ok: true, order: await view(env, fresh) });

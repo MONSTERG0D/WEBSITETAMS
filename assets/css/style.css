@@ -1280,3 +1280,5 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 .osheet [hidden], .adm-drawer [hidden] { display: none !important; }
 /* Arabic: monospace fonts rarely join Arabic letters, so prices and labels in the new parts use the body font */
 :root[lang="ar"] .svc-p, :root[lang="ar"] .svc-tp, :root[lang="ar"] .os-bp, :root[lang="ar"] .ao-dl dt, :root[lang="ar"] .ao-head .o-s, :root[lang="ar"] .ad-h-t, :root[lang="ar"] .chip small { font-family: var(--f-body); letter-spacing: 0; }
+.ad-hist li.ad-h-bad { color: #ff6b6b; }
+[data-ui="village"] .ad-hist li.ad-h-bad { color: #b3262e; }

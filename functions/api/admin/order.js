@@ -6,11 +6,13 @@
      next_part  {}                        ask for the next part of a split price. Emails the pay link.
      status     { status }                "in_progress", "delivered" or "cancelled"
      note       { note }                  the owner's private note (the customer never sees it)
-   Every change is written to audit_log. */
+     resend     {}                        email the pay link for the part that is due, again
+   Every change is written to audit_log, and so is every email (sent or not, with the reason).
+   Emails here are sent before answering, so the admin page can say at once whether one failed. */
 import { HttpError, json, readJson } from "../../_lib/http.js";
 import { requireAdmin, requestMeta, now } from "../../_lib/auth.js";
-import { cleanRef, cleanText, pageInfo, liveParts, partStatements, livePaymentCount, auditStatement, siteOrigin, MAX_PARTS, MAX_PRICE } from "../../_lib/orders.js";
-import { payMail, acceptedMail, mailCustomer } from "../../_lib/ordermail.js";
+import { cleanRef, cleanText, pageInfo, liveParts, partStatements, auditStatement, siteOrigin, logEmail, MAX_PARTS, MAX_PRICE } from "../../_lib/orders.js";
+import { payMail, acceptedMail, mailCustomer, safeMail } from "../../_lib/ordermail.js";
 
 /* Which status the owner can move an order to, from where. Payments (paid, refunded) come with the UPI step. */
 const MOVES = {
@@ -48,6 +50,7 @@ async function view(env, order) {
     can: {
       price: ["requested", "pending"].includes(order.status) && !live && !paidPart,
       next_part: !["cancelled", "refunded", "delivered"].includes(order.status) && !parts.some((p) => p.status === "due") && parts.some((p) => p.status === "locked"),
+      resend: !["cancelled", "refunded"].includes(order.status) && parts.some((p) => p.status === "due"),
       status: Object.keys(MOVES).filter((s) => MOVES[s].includes(order.status) && !(s === "cancelled" && (live || paidPart))),
     },
     upi_day_limit: 100000,
@@ -60,7 +63,7 @@ export async function onRequestGet({ request, env }) {
   return json({ ok: true, order: await view(env, order) });
 }
 
-export async function onRequestPost({ request, env, waitUntil }) {
+export async function onRequestPost({ request, env }) {
   const session = await requireAdmin(request, env);
   const body = await readJson(request, 8000);
   const order = await load(env, body.ref);
@@ -69,7 +72,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const audit = (action, data) => auditStatement(env, { actor: "admin", userId: session.user.id, action, orderId: order.id, ipHash: meta.ipHash, t, data });
   const customer = current.customer;
   const lang = (current.info && current.info.lang) || (customer && customer.lang) || "en";
-  let mail = null;
+  let mail = null, mailKind = null;
 
   if (body.action === "price") {
     if (!current.can.price) throw new HttpError(409, "cannot_price", "This order cannot be priced now.");
@@ -85,9 +88,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
       env.DB.prepare("UPDATE orders SET amount_minor = ?, status = ?, priced_at = ?, updated_at = ? WHERE id = ?").bind(total * 100, free ? "in_progress" : "pending", t, t, order.id),
       audit("order.priced", { total, parts: parts.length, was: order.amount_minor === null ? null : order.amount_minor / 100 }),
     ]);
-    mail = free
+    mailKind = free ? "accepted" : "pay";
+    mail = safeMail(() => free
       ? acceptedMail(lang, { ref: order.ref, title: order.title, origin })
-      : payMail(lang, { ref: order.ref, title: order.title, amountMinor: parts[0] * 100, currency: order.currency, n: 1, total: parts.length, origin });
+      : payMail(lang, { ref: order.ref, title: order.title, amountMinor: parts[0] * 100, currency: order.currency, n: 1, total: parts.length, origin }));
   } else if (body.action === "next_part") {
     if (!current.can.next_part) throw new HttpError(409, "no_next_part", "There is no part to ask for.");
     const next = current.parts.find((p) => p.status === "locked");
@@ -96,7 +100,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
       env.DB.prepare("UPDATE orders SET updated_at = ? WHERE id = ?").bind(t, order.id),
       audit("order.part_opened", { seq: next.seq, amount: next.amount_minor / 100 }),
     ]);
-    mail = payMail(lang, { ref: order.ref, title: order.title, amountMinor: next.amount_minor, currency: order.currency, n: next.seq, total: current.parts.length, origin });
+    mailKind = "pay";
+    mail = safeMail(() => payMail(lang, { ref: order.ref, title: order.title, amountMinor: next.amount_minor, currency: order.currency, n: next.seq, total: current.parts.length, origin }));
+  } else if (body.action === "resend") {
+    if (!current.can.resend) throw new HttpError(409, "no_due_part", "Nothing is due on this order.");
+    const due = current.parts.find((p) => p.status === "due");
+    mailKind = "pay";
+    mail = safeMail(() => payMail(lang, { ref: order.ref, title: order.title, amountMinor: due.amount_minor, currency: order.currency, n: due.seq, total: current.parts.length, origin }));
   } else if (body.action === "status") {
     const to = body.status;
     if (!current.can.status.includes(to)) throw new HttpError(409, "bad_move", "That status change is not possible now.");
@@ -114,11 +124,12 @@ export async function onRequestPost({ request, env, waitUntil }) {
     throw new HttpError(400, "bad_request", "Unknown action.");
   }
 
-  let mailed = null;
-  if (mail && customer && customer.status === "active") {
-    const p = mailCustomer(env, customer.email, mail);
-    if (waitUntil) { waitUntil(p.catch(() => {})); mailed = true; } else mailed = await p;
+  let email = null;
+  if (mailKind) {
+    email = customer && customer.status === "active" ? await mailCustomer(env, customer.email, mail) : { ok: false, status: 0, error: "the account is not active" };
+    await logEmail(env, order.id, "customer", mailKind, email);
+    email = { ok: email.ok, error: email.ok ? null : email.error };
   }
   const fresh = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(order.id).first();
-  return json({ ok: true, mailed, order: await view(env, fresh) });
+  return json({ ok: true, email, order: await view(env, fresh) });
 }

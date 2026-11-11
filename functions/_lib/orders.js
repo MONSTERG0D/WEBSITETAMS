@@ -143,6 +143,15 @@ export function auditStatement(env, { actor, userId, action, orderId, data, ipHa
   ).bind(actor, userId, action, orderId, data ? JSON.stringify(data) : null, ipHash, t);
 }
 
+/* What happened to an email about an order, kept in the order's history so the owner can see it.
+   r is { ok, status, error } from the mail helpers. */
+export async function logEmail(env, orderId, to, kind, r) {
+  try {
+    await auditStatement(env, { actor: "system", userId: null, action: "order.email", orderId, t: now(),
+      data: { to, kind, ok: !!(r && r.ok), status: r ? r.status : 0, error: r && !r.ok ? r.error : null } }).run();
+  } catch (e) { console.error("could not log an email", e && e.message); }
+}
+
 /* ---------------------------------------------------------------- money words for emails */
 export function rupees(minor) {
   return "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100);

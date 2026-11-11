@@ -1096,7 +1096,7 @@
     bad_phone: "That WhatsApp number doesn’t look right.", rate_limited: "Too many orders in a short time. Please try again later.",
     too_many_open: "You have many open requests. Please wait for my reply first.", not_configured: "Ordering is not switched on yet. Please come back soon.",
     cannot_cancel: "This order can no longer be cancelled here.", not_found: "Couldn’t find that order.", network: "You seem to be offline. Please try again.",
-    cannot_price: "This order can’t be priced now. Reload it.", bad_parts: "Each part must be a whole number of rupees.", no_next_part: "There is no part to ask for.", bad_move: "That status change isn’t possible now. Reload it."
+    cannot_price: "This order can’t be priced now. Reload it.", no_due_part: "Nothing is due on this order.", bad_parts: "Each part must be a whole number of rupees.", no_next_part: "There is no part to ask for.", bad_move: "That status change isn’t possible now. Reload it."
   };
   function shopError(j) { var c = j && j.error && j.error.code; return T(SHOP_ERR[c] || "Something went wrong. Please try again."); }
   function apiCall(path, body) {
@@ -1603,6 +1603,7 @@
         pl.appendChild(li);
       });
       dq("[data-ad-next]").hidden = !o.can.next_part;
+      dq("[data-ad-resend]").hidden = !o.can.resend;
       // status moves
       var mv = dq("[data-ad-moves]"), mb = dq("[data-ad-move-btns]"); mb.textContent = ""; mv.hidden = !o.can.status.length;
       o.can.status.forEach(function (to) {
@@ -1619,8 +1620,11 @@
         t.className = "ad-h-t"; t.textContent = day(h.at);
         var extra = h.action === "order.priced" ? " · " + (d.total === 0 ? T("Free") : inr(d.total)) + (d.parts > 1 ? " · " + T("{n} parts").replace("{n}", d.parts) : "")
           : h.action === "order.status" ? " · " + T(ORDER_ST[d.from] || d.from) + " → " + T(ORDER_ST[d.to] || d.to)
-          : h.action === "order.part_opened" ? " · " + inr(d.amount) : h.action === "order.created" && d.amount ? " · " + inr(d.amount) : "";
-        w.textContent = T(HIST[h.action] || h.action) + extra; li.appendChild(t); li.appendChild(w); hl.appendChild(li);
+          : h.action === "order.part_opened" ? " · " + inr(d.amount) : h.action === "order.created" && d.amount ? " · " + inr(d.amount)
+          : h.action === "order.email" && !d.ok && d.error ? " · " + d.error : "";
+        var what = h.action === "order.email" ? (d.to === "owner" ? (d.ok ? "Email to you: sent" : "Email to you failed") : (d.ok ? "Email to the customer: sent" : "Email to the customer failed")) : HIST[h.action] || h.action;
+        w.textContent = T(what) + extra;
+        if (h.action === "order.email" && !d.ok) li.classList.add("ad-h-bad"); li.appendChild(t); li.appendChild(w); hl.appendChild(li);
       });
       dq("[data-ad-body]").hidden = false;
     }
@@ -1638,7 +1642,9 @@
       apiCall("admin/order", body).then(function (j) {
         dBusy = false; $$("button", dEl).forEach(function (b) { b.disabled = false; });
         if (!j.ok) return dnote(shopError(j), "err");
-        drawDrawer(j.order); dnote(okText, "ok"); sfx("switch");
+        drawDrawer(j.order);
+        if (j.email && !j.email.ok) dnote(T("Saved, but the email to the customer didn’t go out: {e}").replace("{e}", j.email.error || "?"), "err");
+        else { dnote(okText, "ok"); sfx("switch"); }
         var card = $(".panel-card", dEl); if (card && card.scrollTo) card.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });   // the message sits at the top
         if (tab === "orders") load();
       });
@@ -1654,6 +1660,7 @@
         act({ action: "price", parts: list.length ? list : [0] }, T(sum === 0 ? "Accepted. The customer has been told. ✅" : "Price sent to the customer. ✅"));
       });
       dq("[data-ad-next]").addEventListener("click", function () { act({ action: "next_part" }, T("Asked for the next part. ✅")); });
+      dq("[data-ad-resend]").addEventListener("click", function () { act({ action: "resend" }, T("Email sent to the customer. ✅")); });
       dq("[data-ad-save-note]").addEventListener("click", function () { act({ action: "note", note: dq("[data-ad-note]").value }, T("Note saved. ✅")); });
     }
     tbody.addEventListener("click", function (e) {

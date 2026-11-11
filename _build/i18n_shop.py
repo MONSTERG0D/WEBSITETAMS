@@ -167,4 +167,14 @@ P = [
 ("Price sent to the customer. ✅", "Preis an den Kunden gesendet. ✅", "Prix envoyé au client. ✅", "料金をお客様に送りました。✅", "Precio enviado al cliente. ✅", "Цена отправлена клиенту. ✅", "تم إرسال السعر إلى العميل. ✅", "价格已发给客户。✅", "고객에게 가격을 보냈어요. ✅"),
 ("Asked for the next part. ✅", "Nächster Teil angefordert. ✅", "Partie suivante demandée. ✅", "次の回を請求しました。✅", "Siguiente parte pedida. ✅", "Следующая часть запрошена. ✅", "تم طلب الجزء التالي. ✅", "已请求下一笔。✅", "다음 회차를 요청했어요. ✅"),
 ("Note saved. ✅", "Notiz gespeichert. ✅", "Note enregistrée. ✅", "メモを保存しました。✅", "Nota guardada. ✅", "Заметка сохранена. ✅", "تم حفظ الملاحظة. ✅", "备注已保存。✅", "메모를 저장했어요. ✅"),
+
+# ---------- admin: emails about an order (v3.8.1) ----------
+("Email the pay link again", "Zahlungslink erneut senden", "Renvoyer le lien de paiement", "支払いリンクを再送", "Reenviar el enlace de pago", "Отправить ссылку на оплату ещё раз", "أعد إرسال رابط الدفع", "重新发送付款链接", "결제 링크 다시 보내기"),
+("Email sent to the customer. ✅", "E-Mail an den Kunden gesendet. ✅", "E-mail envoyé au client. ✅", "お客様にメールを送りました。✅", "Correo enviado al cliente. ✅", "Письмо клиенту отправлено. ✅", "تم إرسال البريد إلى العميل. ✅", "邮件已发给客户。✅", "고객에게 메일을 보냈어요. ✅"),
+("Saved, but the email to the customer didn’t go out: {e}", "Gespeichert, aber die E-Mail an den Kunden ging nicht raus: {e}", "Enregistré, mais l’e-mail au client n’est pas parti : {e}", "保存しましたが、お客様へのメールは送れませんでした：{e}", "Guardado, pero el correo al cliente no salió: {e}", "Сохранено, но письмо клиенту не ушло: {e}", "تم الحفظ، لكن لم يُرسل البريد إلى العميل: {e}", "已保存，但发给客户的邮件没有发出：{e}", "저장했지만 고객에게 메일이 가지 않았어요: {e}"),
+("Email to the customer: sent", "E-Mail an den Kunden: gesendet", "E-mail au client : envoyé", "お客様へのメール：送信済み", "Correo al cliente: enviado", "Письмо клиенту: отправлено", "البريد إلى العميل: أُرسل", "发给客户的邮件：已发送", "고객에게 메일: 보냄"),
+("Email to the customer failed", "E-Mail an den Kunden fehlgeschlagen", "Échec de l’e-mail au client", "お客様へのメール：失敗", "Falló el correo al cliente", "Письмо клиенту не отправлено", "فشل إرسال البريد إلى العميل", "发给客户的邮件发送失败", "고객에게 메일 실패"),
+("Email to you: sent", "E-Mail an dich: gesendet", "E-mail pour toi : envoyé", "あなたへのメール：送信済み", "Correo para ti: enviado", "Письмо тебе: отправлено", "البريد إليك: أُرسل", "发给你的邮件：已发送", "나에게 메일: 보냄"),
+("Email to you failed", "E-Mail an dich fehlgeschlagen", "Échec de l’e-mail pour toi", "あなたへのメール：失敗", "Falló el correo para ti", "Письмо тебе не отправлено", "فشل إرسال البريد إليك", "发给你的邮件发送失败", "나에게 메일 실패"),
+("Nothing is due on this order.", "Bei dieser Bestellung ist nichts fällig.", "Rien n’est à payer sur cette commande.", "この注文に支払い待ちの回はありません。", "No hay nada pendiente de pago en este pedido.", "По этому заказу ничего не нужно оплачивать.", "لا يوجد مبلغ مستحق في هذا الطلب.", "这个订单没有待付款项。", "이 주문에는 결제할 금액이 없어요."),
 ]

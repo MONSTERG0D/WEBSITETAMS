@@ -1,19 +1,36 @@
 /* Outgoing email. One small function talks to the email service (Resend), so changing
    service later means changing only sendMail(). The API key lives in Cloudflare as EMAIL_API_KEY. */
 
-export async function sendMail(env, { to, subject, text, html }) {
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + env.EMAIL_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: env.MAIL_FROM, to: [to], subject, text, html }),
-    });
-    if (res.ok) return true;
-    console.error("email service said", res.status, (await res.text()).slice(0, 300));
-  } catch (err) {
-    console.error("email service unreachable", err && err.message);
+/* Sends one email and says what happened: { ok, status, error }. A refusal for too many requests
+   (Resend allows about 2 a second) or a fault on their side is tried once more after a short wait.
+   The reason for any failure also goes to the Cloudflare log. */
+export async function sendMailResult(env, { to, subject, text, html }) {
+  let last = { ok: false, status: 0, error: "not sent" };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + env.EMAIL_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: env.MAIL_FROM, to: [to], subject, text, html }),
+      });
+      if (res.ok) return { ok: true, status: res.status, error: null };
+      const body = (await res.text()).slice(0, 400);
+      let msg = body;
+      try { const j = JSON.parse(body); msg = j.message || j.error || body; } catch (e) {}
+      console.error("email service said", res.status, body);
+      last = { ok: false, status: res.status, error: String(msg).slice(0, 200) };
+      if (res.status !== 429 && res.status < 500) break;
+    } catch (err) {
+      console.error("email service unreachable", err && err.message);
+      last = { ok: false, status: 0, error: "email service unreachable" };
+    }
   }
-  return false;
+  return last;
+}
+
+export async function sendMail(env, mail) {
+  return (await sendMailResult(env, mail)).ok;
 }
 
 /* A short plain note to the site owner (new sign-up, new order). Goes to NOTIFY_EMAIL, or the
@@ -22,11 +39,15 @@ export async function sendMail(env, { to, subject, text, html }) {
 const OWNER_DEFAULT = "ak4418561@gmail.com";
 const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-export async function notifyOwner(env, subject, lines, link = "https://theaamirsheikh.com/admin.html") {
-  if (!env.EMAIL_API_KEY || !env.MAIL_FROM) return false;
+export async function notifyOwner(env, subject, lines, link) {
+  return (await notifyOwnerResult(env, subject, lines, link)).ok;
+}
+
+export async function notifyOwnerResult(env, subject, lines, link = "https://theaamirsheikh.com/admin.html") {
+  if (!env.EMAIL_API_KEY || !env.MAIL_FROM) return { ok: false, status: 0, error: "email settings missing" };
   const text = lines.join("\n") + "\n\nAdmin page: " + link;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#0b0b0d">${lines.map((l) => `<div style="white-space:pre-wrap">${escHtml(l) || "&nbsp;"}</div>`).join("")}<p style="margin-top:16px"><a href="${escHtml(link)}">Open the admin page</a></p></div>`;
-  return sendMail(env, { to: env.NOTIFY_EMAIL || OWNER_DEFAULT, subject: subject + " — THE AAMIR SHEIKH", text, html });
+  return sendMailResult(env, { to: env.NOTIFY_EMAIL || OWNER_DEFAULT, subject: subject + " — THE AAMIR SHEIKH", text, html });
 }
 
 export function signupNotice(env, user, method, meta) {
