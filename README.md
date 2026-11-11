@@ -14,3 +14,4 @@ Personal website of THE AAMIR SHEIKH, live at https://theaamirsheikh.com (Cloudf
 - Navigation (v3.4): **Home · Work · About · Services · Contact**. About = Story, Struggles, Skills, Inspirations (sub-nav on those pages); Contact = `order.html`. `/about` and `/contact` redirect there.
 - Intro: 3 seconds, then continues quietly; Skip is visible from the first frame. Sound (music and click sounds) is off until the visitor turns it on. The intro can be switched off in Settings.
 - Lighthouse game: `404.html` and `play.html` (footer + menu link). The dark hides six works; the light follows the mouse, finger or arrow keys. Edit the six works in `LH_WORKS` in `_build/build.py`.
+- Backend (accounts and payments, in progress): Cloudflare Pages Functions in `functions/api/` and a D1 database. The map, the setup commands and the list of secrets are in `_db/README.md`. Secrets live only in Cloudflare, never in this repo.
