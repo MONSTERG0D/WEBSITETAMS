@@ -390,11 +390,14 @@
     if (e.key === "Escape") {
       if (intro && !intro.hidden) return enter("quiet");
       if (player && player.classList.contains("open")) return closePlayer();
+      var sheetOpen = $(".osheet.open, .adm-drawer.open");
+      if (sheetOpen) { sheetOpen.dispatchEvent(new Event("tas:close")); return; }
       if (panel && panel.classList.contains("open")) return closePanel();
       if (pause && pause.classList.contains("open")) return closePause();
       return openPause();
     }
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.metaKey || e.ctrlKey || e.altKey) return;
+    if ($(".osheet.open, .adm-drawer.open")) return;
     if (e.key === "s" || e.key === "S") { e.preventDefault(); panel && panel.classList.contains("open") ? closePanel() : openPanel(); }
     else if (e.key === "m" || e.key === "M") { unlock(); toggleMusic(); }
     else if (e.key === "1" || e.key === "2" || e.key === "3") { if (!e.target.closest("form")) setUI(["riot", "noir", "village"][+e.key - 1]); }
@@ -624,15 +627,57 @@
     // preselect from ?like=slug or ?want=group
     var q = new URLSearchParams(location.search);
     if (form.getAttribute("data-form") === "order") {
-      if (q.get("like")) { var li = $('input[name="like"][data-slug="' + q.get("like") + '"]', form); if (li) li.checked = true; var vi = $('input[data-group="video-editing"]', form); if (vi && /follows|death|drift|chalamet|coca/.test(q.get("like"))) vi.checked = true; }
+      if (q.get("like")) { var li = $('input[name="like"][data-slug="' + q.get("like") + '"]', form); if (li) li.checked = true; var vi = $('input[data-group="video"]', form); if (vi && /follows|death|drift|chalamet|coca/.test(q.get("like"))) vi.checked = true; }
       if (q.get("want")) {
-        var map = { "video-editing": "video-editing", "modeling-3d": "3d", "graphic-design": "design", "frontend": "web", "drawing": "design", "animation": "motion-graphics", "game-dev": "games", "programming-robotics": "robotics-code" };
+        var map = { "video-editing": "video", "modeling-3d": "3d", "graphic-design": "design", "frontend": "web", "drawing": "design", "animation": "video", "game-dev": "games", "programming-robotics": "sim", "motion-graphics": "video", "robotics-code": "sim" };
         var g = map[q.get("want")] || q.get("want"), box = $('[data-group-box="' + g + '"]', form);
         if (box) { box.classList.add("has"); setTimeout(function () { box.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" }); var f = $("input", box); if (f) f.focus({ preventScroll: true }); }, 400); }
       }
     }
     refresh();
     $$("[data-send]", form).forEach(function (b) { b.addEventListener("click", function () { sendKind = b.getAttribute("data-send"); }); });
+    /* v3.8: save the order to the visitor's account as a request. Signed out: the picks are kept in this tab
+       while they sign in, and come back afterwards. */
+    function keepDraft() {
+      ss("tas_of", JSON.stringify({ c: $$("input:checked", form).map(function (i) { return [i.name, i.value]; }), f: ["name", "contact", "details"].map(function (n) { return [n, field(form, n)]; }) }));
+    }
+    function signInFirst() {
+      keepDraft();
+      status.className = "form-status err"; status.textContent = T("Sign in first. Your picks are kept.") + " ";
+      var a = doc.createElement("a"); a.className = "link"; a.href = ROOT + "account.html?next=" + encodeURIComponent("/order.html"); a.textContent = T("Sign in");
+      status.appendChild(a); a.focus();
+    }
+    function toAccount() {
+      if (!signedInHint()) return signInFirst();
+      var WHEN = { "ASAP": "asap", "1 week": "week", "2–4 weeks": "month", "Flexible": "flex" };
+      lock(true); status.textContent = T("Saving to your account…");
+      apiCall("orders", {
+        source: "form", lang: S.lang,
+        services: $$('input[name="svc"]:checked', form).map(function (i) { return i.getAttribute("data-id"); }),
+        likes: vals(form, "like"), budget: vals(form, "budget")[0] || null, timing: WHEN[vals(form, "when")[0]] || null,
+        brief: field(form, "details"), name: field(form, "name"), contact: field(form, "contact")
+      }).then(function (j) {
+        if (j.ok) {
+          sentLock = true; status.className = "form-status ok";
+          status.textContent = T("Saved to your account as {ref}. I’ll email you the price. ✅").replace("{ref}", j.order.ref) + " ";
+          var a = doc.createElement("a"); a.className = "link"; a.href = ROOT + "account.html?order=" + encodeURIComponent(j.order.ref); a.textContent = T("See your order");
+          status.appendChild(a); sfx("switch"); return;
+        }
+        lock(false);
+        if (j.error && j.error.code === "signed_out") return signInFirst();
+        status.className = "form-status err"; status.textContent = shopError(j);
+      });
+    }
+    if (form.getAttribute("data-form") === "order" && ss("tas_of")) {
+      try {
+        var dr = JSON.parse(ss("tas_of"));
+        (dr.c || []).forEach(function (p) { $$('input[name="' + p[0] + '"]', form).forEach(function (i) { if (i.value === p[1]) i.checked = true; }); });
+        (dr.f || []).forEach(function (p) { var f = $('[name="' + p[0] + '"]', form); if (f && p[1]) f.value = p[1]; });
+        refresh();
+        if (signedInHint()) { status.className = "form-status ok"; status.textContent = T("Your picks are back. Press “Send to my account” again."); }
+      } catch (e) {}
+      ss("tas_of", "");
+    }
     /* v3.4: one message per press — the send buttons lock while sending, and after a successful
        send they stay locked until the visitor changes something (so a double tap can't send twice) */
     var busy = false, sentLock = false;
@@ -651,6 +696,7 @@
         var bad = null;
         ["name", "contact"].forEach(function (n) { var f = $('[name="' + n + '"]', form); var empty = !f.value.trim(); f.setAttribute("aria-invalid", empty ? "true" : "false"); if (empty && !bad) bad = f; });
         if (!vals(form, "svc").length && !vals(form, "like").length) { status.textContent = T("Pick at least one thing you want (step 1)."); status.classList.add("err"); var c = $('input[name="svc"]', form); if (c) c.focus(); return; }
+        if (sendKind === "account") { ["name", "contact"].forEach(function (n) { $('[name="' + n + '"]', form).setAttribute("aria-invalid", "false"); }); return toAccount(); }
         if (bad) { status.textContent = T("Please add your name and a way to reach you."); status.classList.add("err"); bad.focus(); return; }
       } else if (!vals(form, "rating").length && !field(form, "details") && !vals(form, "liked").length) {
         status.textContent = T("Give a rating or write a line first."); status.classList.add("err"); return;
@@ -996,6 +1042,203 @@
     });
   })();
 
+  /* ===================================================== shop: prices, names, API (v3.8)
+     Prices and names come from assets/js/catalog.js, made by the build from _build/catalog.py.
+     The live price here is only a preview: the server works the price out again from its own copy. */
+  var CAT = window.TAS_CAT || null;
+  var NUMLOC = S.lang === "en" ? "en-IN" : S.lang;   // English pages show Indian grouping: ₹1,00,000
+  function signedInHint() { return /(?:^|;\s*)tas_in=1(?:;|$)/.test(doc.cookie); }
+  function inr(r) {
+    try { return new Intl.NumberFormat(NUMLOC, { style: "currency", currency: "INR", maximumFractionDigits: r % 1 ? 2 : 0 }).format(r); } catch (e) { return "₹" + r; }
+  }
+  function inrRange(a, b) {
+    var s = null;
+    try { var f = new Intl.NumberFormat(NUMLOC, { style: "currency", currency: "INR", maximumFractionDigits: 0 }); if (f.formatRange) s = f.formatRange(a, b); } catch (e) {}
+    if (!s) s = inr(a) + "–" + inr(b);
+    // Arabic: keep "low–high" in reading order inside right-to-left text (the marks Intl adds would flip it)
+    return S.lang === "ar" ? "\u2066" + s.replace(/[\u200e\u200f]/g, "") + "\u2069" : s;
+  }
+  function inrMinor(m) { return m === null || m === undefined ? "" : inr(m / 100); }
+  function estText(est) {
+    if (!est) return T("Price after talking");
+    if (est.from) return T("From {p}").replace("{p}", inr(est.min));
+    return est.max !== null && est.max !== undefined && est.max !== est.min ? inrRange(est.min, est.max) : inr(est.min);
+  }
+  function basePrice(it) {
+    if (it.kind === "quote") return T("Price after talking");
+    if (it.kind === "from") return T("From {p}").replace("{p}", inr(it.min));
+    if (it.kind === "fixed") return inr(it.min);
+    return inrRange(it.min, it.max);
+  }
+  function catItem(id) { return CAT && CAT.data.items[id] || null; }
+  function itemName(id, tier) {
+    var it = catItem(id); if (!it) return id;
+    var n = T(it.name);
+    if (tier && it.tiers) it.tiers.forEach(function (t) { if (t.id === tier) n += " — " + T(t.name); });
+    return n;
+  }
+  function timingName(id) { var t = CAT && CAT.timingOf(id); return t ? T(t.name) : ""; }
+  function groupName(id) { var g = CAT && CAT.data.groups.filter(function (x) { return x.id === id; })[0]; return g ? T(g.name) : ""; }
+  function lengthText(id, units) { return units === 0 ? T("Longer") : CAT ? CAT.lengthOf(id, units) || "" : ""; }
+  /* What an order is, in the visitor's language: "YouTube video · 3:00", or the services picked on the order form. */
+  function orderName(o) {
+    var i = o.info || {};
+    if (i.source === "service" && catItem(i.service)) { var len = lengthText(i.service, i.units); return itemName(i.service, i.tier) + (len ? " · " + len : ""); }
+    if (i.source === "form") { var n = (i.services || []).map(function (s) { return itemName(s); }); return n.length ? n.join(", ") : T("Order form"); }
+    return o.title || o.ref;
+  }
+  function partName(seq, count) { return count < 2 ? T("Full payment") : seq === 1 ? T("Advance") : seq === count ? T("Final") : T("Milestone {n}").replace("{n}", seq - 1); }
+  var ORDER_ST = { requested: "Requested", pending: "Waiting for payment", paid: "Paid", in_progress: "Being made", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" };
+  var PART_ST = { due: "Due now", locked: "Later", paid: "Paid" };
+  var SHOP_ERR = {
+    bad_tier: "Pick a style first.", bad_units: "Pick a length first.", bad_timing: "Pick when you need it.", bad_service: "Something went wrong. Please try again.",
+    bad_pick: "Pick at least one thing you want (step 1).", brief_short: "Tell me a little more about what you need.", brief_long: "That brief is too long. Please shorten it.",
+    bad_phone: "That WhatsApp number doesn’t look right.", rate_limited: "Too many orders in a short time. Please try again later.",
+    too_many_open: "You have many open requests. Please wait for my reply first.", not_configured: "Ordering is not switched on yet. Please come back soon.",
+    cannot_cancel: "This order can no longer be cancelled here.", not_found: "Couldn’t find that order.", network: "You seem to be offline. Please try again.",
+    cannot_price: "This order can’t be priced now. Reload it.", bad_parts: "Each part must be a whole number of rupees.", no_next_part: "There is no part to ask for.", bad_move: "That status change isn’t possible now. Reload it."
+  };
+  function shopError(j) { var c = j && j.error && j.error.code; return T(SHOP_ERR[c] || "Something went wrong. Please try again."); }
+  function apiCall(path, body) {
+    var o = { credentials: "same-origin", headers: { "Accept": "application/json" } };
+    if (body) { o.method = "POST"; o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); }
+    return fetch("/api/" + path, o).then(function (r) {
+      return r.json().then(function (j) { return j && typeof j === "object" ? j : { ok: false }; }, function () { return { ok: false, error: { code: "server_error" } }; });
+    }, function () { return { ok: false, error: { code: "network" } }; });
+  }
+  /* A slide-in panel (the same one as Settings) with focus kept inside, closed by Esc, the x or a tap outside. */
+  function sheet(el) {
+    var last = null;
+    function open() {
+      closePause(true); last = doc.activeElement;
+      el.classList.add("open"); el.setAttribute("aria-hidden", "false"); root.style.overflow = "hidden"; sfx("open");
+      setTimeout(function () { var c = $(".panel-top .icon-pill", el); if (c) c.focus(); }, 60);
+    }
+    function close() {
+      if (!el.classList.contains("open")) return;
+      el.classList.remove("open"); el.setAttribute("aria-hidden", "true"); root.style.overflow = ""; sfx("close");
+      if (last && last.focus && doc.contains(last)) last.focus();
+    }
+    el.addEventListener("click", function (e) { if (e.target === el || e.target.closest("[data-os-close], [data-ad-close]")) close(); });
+    el.addEventListener("keydown", function (e) { trap($(".panel-card", el), e); });
+    el.addEventListener("tas:close", close);
+    return { open: open, close: close, isOpen: function () { return el.classList.contains("open"); } };
+  }
+  /* A button that asks "tap again" before doing something that can't be undone. */
+  function twoStep(btn, label, again, act) {
+    var armed = false, timer = null, txt = $("span", btn) || btn;
+    btn.addEventListener("click", function () {
+      if (!armed) { armed = true; txt.textContent = T(again); btn.classList.add("armed"); timer = setTimeout(function () { armed = false; txt.textContent = T(label); btn.classList.remove("armed"); }, 4000); return; }
+      clearTimeout(timer); armed = false; txt.textContent = T(label); btn.classList.remove("armed"); act();
+    });
+  }
+
+  /* ===================================================== Services page: prices + order panel (v3.8) */
+  (function orderSheet() {
+    var el = $("[data-osheet]"); if (!el || !CAT) return;
+    var items = CAT.data.items, sh = sheet(el);
+    var form = $("[data-os-form]", el), done = $("[data-os-done]", el), status = $("[data-os-status]", el);
+    var tierBox = $("[data-os-tiers]", el), tierList = $("[data-os-tier-list]", el), lenBox = $("[data-os-len]", el), units = $("[data-os-units]", el);
+    var total = $("[data-os-total]", el), totalK = $("[data-os-total-k]", el), how = $("[data-os-how]", el), go = $("[data-os-submit]", el), goT = $("[data-os-submit-t]", el), outNote = $("[data-os-out]", el);
+    var cur = null, busy = false;
+    // prices on the page, in the visitor's language
+    $$("[data-price]").forEach(function (p) { var it = items[p.getAttribute("data-price")]; if (it) p.textContent = basePrice(it); });
+    $$("[data-tier-price]").forEach(function (p) { var v = p.getAttribute("data-tier-price").split("-"); p.textContent = inrRange(+v[0], +v[1]); });
+
+    function val(name) { var i = $('input[name="' + name + '"]:checked', form); return i ? i.value : null; }
+    function choice() { return { tier: val("tier"), units: lenBox.hidden ? null : +units.value, timing: val("timing") }; }
+    function note(t, cls) { status.className = "form-status" + (cls ? " " + cls : ""); status.textContent = t || ""; }
+    function refresh() {
+      var it = items[cur], c = choice(), q = CAT.quote(cur, c), tier = null;
+      if (it.tiers && c.tier) it.tiers.forEach(function (t) { if (t.id === c.tier) tier = t; });
+      var lines = [];
+      totalK.textContent = T("Price");
+      goT.textContent = T(signedInHint() ? "Send request" : "Sign in to send");
+      if (q.error) {
+        total.textContent = tier ? inrRange(tier.min, tier.max) : basePrice(it);
+        lines.push(T(q.error === "tier" ? "Pick a style to see the price." : "Pick when you need it to see the price."));
+      } else if (q.instant) {
+        total.textContent = inr(q.amount);
+        lines.push(T("Fixed price. You can pay as soon as you order."));
+        if (signedInHint()) goT.textContent = T("Order — {p}").replace("{p}", inr(q.amount));
+      } else if (q.kind === "quote") {
+        total.textContent = T("Price after talking");
+        lines.push(T("I’ll read your brief and reply with a price."));
+      } else {
+        totalK.textContent = T("Estimate");
+        total.textContent = estText(q.est);
+        lines.push(T(c.timing === "week" ? "For 1 week I confirm the price: the base price or up to ×1.5." : c.timing === "flex" ? "We agree on the price and timing together." : "I confirm the final price after reading your brief. You pay only after that."));
+      }
+      if (it.free) lines.push(T("Your first thumbnail is free (one per account)."));
+      how.textContent = lines.join(" ");
+      outNote.hidden = signedInHint();
+    }
+    function fill(id, draft) {
+      var it = items[id]; cur = id; draft = draft || {};
+      $("[data-os-name]", el).textContent = T(it.name);
+      $("[data-os-group]", el).textContent = groupName(it.g);
+      var unitWord = it.unit ? " " + T(CAT.data.unitWords[String(it.unit)]) : "";
+      $("[data-os-base]", el).textContent = basePrice(it) + unitWord;
+      tierList.textContent = "";
+      tierBox.hidden = !it.tiers;
+      (it.tiers || []).forEach(function (t) {
+        var l = doc.createElement("label"), i = doc.createElement("input"), s = doc.createElement("span");
+        l.className = "chip"; i.type = "radio"; i.name = "tier"; i.value = t.id; i.checked = draft.tier === t.id;
+        s.textContent = T(t.name) + " · " + inrRange(t.min, t.max); l.appendChild(i); l.appendChild(s); tierList.appendChild(l);
+      });
+      lenBox.hidden = !it.unit; units.textContent = "";
+      if (it.unit) {
+        for (var n = 1; n <= CAT.data.unitMax; n++) { var o = doc.createElement("option"); o.value = n; o.textContent = CAT.lengthOf(id, n); units.appendChild(o); }
+        var lo = doc.createElement("option"); lo.value = 0; lo.textContent = T("Longer — I’ll explain in the brief"); units.appendChild(lo);
+        units.value = draft.units !== undefined && draft.units !== null ? String(draft.units) : "1";
+      }
+      $$('input[name="timing"]', form).forEach(function (i) { i.checked = draft.timing === i.value; });
+      form.elements.brief.value = draft.brief || ""; form.elements.phone.value = draft.phone || "";
+      form.elements.brief.removeAttribute("aria-invalid");
+      form.hidden = false; done.hidden = true; note(""); busy = false; go.disabled = false;
+      refresh();
+    }
+    function openFor(id, draft) { if (!items[id]) return; fill(id, draft); sh.open(); }
+    $$("[data-order]").forEach(function (b) { b.addEventListener("click", function () { openFor(b.getAttribute("data-order")); }); });
+    form.addEventListener("change", refresh); form.addEventListener("input", function (e) { if (e.target.name === "brief" || e.target.name === "phone") e.target.removeAttribute("aria-invalid"); });
+
+    function keep() { var c = choice(); ss("tas_os", JSON.stringify({ id: cur, tier: c.tier, units: c.units, timing: c.timing, brief: form.elements.brief.value, phone: form.elements.phone.value })); }
+    function toSignIn() { keep(); location.href = ROOT + "account.html?next=" + encodeURIComponent("/services.html?order=" + cur); }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault(); if (busy) return;
+      var it = items[cur], c = choice(), brief = form.elements.brief.value.trim();
+      if (it.tiers && !c.tier) { note(T(SHOP_ERR.bad_tier), "err"); var t = $('input[name="tier"]', form); if (t) t.focus(); return; }
+      if (!c.timing) { note(T(SHOP_ERR.bad_timing), "err"); $('input[name="timing"]', form).focus(); return; }
+      if (brief.length < 8) { note(T(SHOP_ERR.brief_short), "err"); form.elements.brief.setAttribute("aria-invalid", "true"); form.elements.brief.focus(); return; }
+      if (!signedInHint()) return toSignIn();
+      busy = true; go.disabled = true; note(T("Sending…"));
+      apiCall("orders", { source: "service", service: cur, tier: c.tier, units: c.units, timing: c.timing, brief: brief, phone: form.elements.phone.value, lang: S.lang }).then(function (j) {
+        busy = false; go.disabled = false;
+        if (!j.ok) {
+          if (j.error && j.error.code === "signed_out") return toSignIn();
+          note(shopError(j), "err");
+          if (j.error && j.error.code === "bad_phone") { form.elements.phone.setAttribute("aria-invalid", "true"); form.elements.phone.focus(); }
+          return;
+        }
+        var o = j.order;
+        $("[data-os-done-h]", el).textContent = T(o.instant ? "Order {ref} is in. ✅" : "Request {ref} is in. ✅").replace("{ref}", o.ref);
+        $("[data-os-done-p]", el).textContent = T(o.instant ? "You can pay for it on your account page." : o.free ? "Your first thumbnail is free. I’ll check your brief and confirm by email." : "I’ll email you the price after reading your brief. It’s on your account page too.");
+        $("[data-os-see]", el).href = ROOT + "account.html?order=" + encodeURIComponent(o.ref);
+        form.hidden = true; done.hidden = false; sfx("switch");
+        setTimeout(function () { $("[data-os-see]", el).focus(); }, 30);
+      });
+    });
+
+    // back from signing in: open the same service with what they had typed
+    var want = new URLSearchParams(location.search).get("order");
+    if (want && items[want]) {
+      var draft = null; try { draft = JSON.parse(ss("tas_os") || "null"); } catch (e) {}
+      ss("tas_os", "");
+      setTimeout(function () { openFor(want, draft && draft.id === want ? draft : null); }, 250);
+      try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    }
+  })();
+
   /* ===================================================== account + sign-in (v3.6) */
   (function account() {
     /* header, menu and footer links say "Account" while signed in. The tas_in cookie is only a hint
@@ -1011,7 +1254,9 @@
     var status = $("[data-acct-status]", box), views = $$("[data-view]", box);
     var fEmail = $("[data-email-form]", box), fCode = $("[data-code-form]", box), gBtn = $("[data-google]", box), orEl = $("[data-or]", box);
     var q = new URLSearchParams(location.search), next = q.get("next") || "";
-    if (!/^\/[A-Za-z0-9_\-.\/]{0,120}$/.test(next) || next.indexOf("//") >= 0) next = "";   // only pages on this site
+    if (!/^\/[A-Za-z0-9_\-.\/?=&]{0,160}$/.test(next) || next.indexOf("//") >= 0) next = "";   // only pages on this site
+    var orderRef = (q.get("order") || "").toUpperCase();
+    if (!/^TAS-[2-9A-HJ-NP-Z]{6}$/.test(orderRef)) orderRef = "";
     var cfg = { google: false, email: false }, email = "", tsToken = "", tsId = null, busy = false;
     var GEN = "Something went wrong. Please try again.";
     var MSG = {
@@ -1071,6 +1316,12 @@
       catch (e) { return (cur || "INR") + " " + (minor / 100); }
     }
     function day(ts) { try { return new Date(ts * 1000).toLocaleDateString(S.lang, { year: "numeric", month: "short", day: "numeric" }); } catch (e) { return ""; } }
+    /* v3.8: every order is a link to its own view (account.html?order=TAS-XXXXXX) */
+    function listPrice(o) {
+      if (o.due_minor) return inrMinor(o.due_minor);
+      if (o.amount_minor === 0) return T("Free");
+      return o.amount_minor === null || o.amount_minor === undefined ? "" : money(o.amount_minor, o.currency);
+    }
     function loadOrders() {
       var ul = $("[data-orders]", box), none = $("[data-orders-none]", box);
       call("account/orders").then(function (j) {
@@ -1078,14 +1329,62 @@
         if (!j.ok || !j.orders) { none.textContent = T("Couldn’t load your orders."); none.hidden = false; return; }
         none.textContent = T("No orders yet."); none.hidden = j.orders.length > 0;
         j.orders.forEach(function (o) {
-          var li = doc.createElement("li");
-          [["o-ref", o.ref], ["o-t", o.title], ["o-s", T(ST[o.status] || o.status)], ["o-d", day(o.created_at)], ["o-a", o.amount_minor == null ? "" : money(o.amount_minor, o.currency)]].forEach(function (c) {
-            var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", o.status); li.appendChild(s);
+          var li = doc.createElement("li"), a = doc.createElement("a");
+          li.className = "has-link"; a.className = "o-link"; a.href = "account.html?order=" + encodeURIComponent(o.ref);
+          [["o-ref", o.ref], ["o-t", orderName(o)], ["o-s", T(ST[o.status] || o.status)], ["o-d", day(o.created_at)], ["o-a", listPrice(o)]].forEach(function (c) {
+            var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", o.due_minor ? "pending" : o.status); a.appendChild(s);
           });
-          ul.appendChild(li);
+          if (o.due_minor) $(".o-s", a).textContent = T("Payment due");
+          li.appendChild(a); ul.appendChild(li);
         });
       });
     }
+
+    /* one order: what it is, the price or estimate, the payment plan, the brief, and cancel while nothing is paid */
+    var ov = $('[data-view="order"]', box);
+    function fact(dl, k, v) { if (!v) return; var dt = doc.createElement("dt"), dd = doc.createElement("dd"); dt.textContent = T(k); dd.textContent = v; dd.dir = "auto"; dl.appendChild(dt); dl.appendChild(dd); }
+    function drawOrder(o) {
+      var i = o.info || {}, parts = o.parts || [], due = parts.filter(function (p) { return p.status === "due"; })[0];
+      $("[data-o-ref]", ov).textContent = o.ref;
+      var st = $("[data-o-status]", ov); st.textContent = T(due ? "Payment due" : ST[o.status] || o.status); st.setAttribute("data-s", due ? "pending" : o.status);
+      $("[data-o-name]", ov).textContent = orderName(o);
+      var dl = $("[data-o-facts]", ov); dl.textContent = "";
+      fact(dl, "When", timingName(i.timing));
+      fact(dl, "Placed", day(o.created_at));
+      fact(dl, o.amount_minor === null || o.amount_minor === undefined ? (i.est ? "Estimate" : "Price") : "Price",
+        o.amount_minor === 0 ? T("Free") : o.amount_minor !== null && o.amount_minor !== undefined ? money(o.amount_minor, o.currency) : estText(i.est));
+      if (i.source === "form") { fact(dl, "Budget", i.budget ? T(i.budget) : ""); fact(dl, "Liked", (i.likes || []).join(", ")); }
+      fact(dl, "WhatsApp number", i.phone);
+      var pay = $("[data-o-pay]", ov); pay.hidden = !due; if (due) $("[data-o-due]", ov).textContent = money(due.amount_minor, due.currency || o.currency);
+      var planBox = $("[data-o-plan-box]", ov), plan = $("[data-o-plan]", ov); plan.textContent = ""; planBox.hidden = parts.length < 2;
+      parts.forEach(function (p) {
+        var li = doc.createElement("li");
+        [["o-t", partName(p.seq, parts.length)], ["o-s", T(PART_ST[p.status] || p.status)], ["o-a", money(p.amount_minor, o.currency)]].forEach(function (c) {
+          var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", p.status === "due" ? "pending" : p.status); li.appendChild(s);
+        });
+        plan.appendChild(li);
+      });
+      var STATE = { requested: i.free ? "Your first thumbnail is free. I’ll check your brief and confirm by email." : "I’m reading your brief. You’ll get the price by email.",
+        pending: due ? "" : "Waiting for payment", paid: "Paid in full. Thank you!", in_progress: "I’m working on it.", delivered: "Delivered. Thank you!", cancelled: "This order was cancelled.", refunded: "This order was refunded." };
+      var stateEl = $("[data-o-state]", ov); stateEl.textContent = STATE[o.status] ? T(STATE[o.status]) : ""; stateEl.hidden = !stateEl.textContent;
+      $("[data-o-brief-box]", ov).hidden = !o.brief; $("[data-o-brief]", ov).textContent = o.brief || "";
+      $("[data-o-cancel]", ov).hidden = !o.can_cancel;
+    }
+    function showOrder(ref) {
+      show("order"); $("[data-o-name]", ov).textContent = T("Checking…");
+      call("account/order?ref=" + encodeURIComponent(ref)).then(function (j) {
+        if (!j.ok) { note(shopError(j), "err"); show("in"); loadOrders(); return; }
+        drawOrder(j.order);
+      });
+    }
+    twoStep($("[data-o-cancel]", ov), "Cancel this order", "Tap again to cancel", function () {
+      var b = $("[data-o-cancel]", ov); b.disabled = true;
+      call("account/order", { ref: orderRef, action: "cancel" }).then(function (j) {
+        b.disabled = false;
+        if (!j.ok) return note(shopError(j), "err");
+        note(T("Order cancelled."), "ok"); drawOrder(j.order);
+      });
+    });
 
     function emailStep() {
       fCode.hidden = true; fEmail.hidden = !cfg.email; gBtn.hidden = !cfg.google; orEl.hidden = !(cfg.google && cfg.email);
@@ -1093,7 +1392,8 @@
     function signedOut() {
       paint(false);
       if (!cfg.google && !cfg.email) return show("off");
-      gBtn.href = "/api/auth/google/start?lang=" + S.lang + (next ? "&next=" + encodeURIComponent(next) : "");
+      var back = next || (orderRef ? "/account.html?order=" + orderRef : "");   // Google brings them back to the order they opened
+      gBtn.href = "/api/auth/google/start?lang=" + S.lang + (back ? "&next=" + encodeURIComponent(back) : "");
       emailStep();
       if (cfg.email) loadTs(cfg.turnstile_site_key);
       show("out");
@@ -1104,6 +1404,7 @@
       if (next) { location.replace(next); return; }   // they came here from another page: send them back
       $("[data-user-name]", box).textContent = user.name || user.email;
       var m = $("[data-user-email]", box); m.textContent = user.email; m.hidden = !user.name;
+      if (orderRef) return showOrder(orderRef);
       show("in"); loadOrders();
     }
     function boot() {
@@ -1169,7 +1470,6 @@
       try { return new Intl.NumberFormat(S.lang, { style: "currency", currency: cur || "INR", maximumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100); } catch (e) { return (cur || "INR") + " " + (minor / 100); }
     }
     function who(r) { return r.name ? r.name + " · " + r.email : r.email; }
-    var ORDER_ST = { requested: "Requested", pending: "Waiting for payment", paid: "Paid", in_progress: "Being made", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" };
     var PAY_ST = { created: "Started", submitted: "Waiting for check", confirmed: "Confirmed", rejected: "Rejected", failed: "Failed", refunded: "Refunded" };
     var USER_ST = { active: "Active", blocked: "Blocked", deleted: "Deleted" };
     var st = function (map) { return function (r) { return { text: T(map[r.status] || r.status), s: r.status }; }; };
@@ -1177,7 +1477,7 @@
       users: [["Name", function (r) { return r.name || "—"; }], ["Email", "email"],
         ["Signed in with", function (r) { return (r.signup_method === "google" ? "Google" : T("Email code")) + (r.signup_method !== "google" && r.google === "yes" ? " + Google" : ""); }],
         ["Status", st(USER_ST)], ["Orders", "orders"], ["Signed up", function (r) { return day(r.created_at); }], ["Last login", function (r) { return day(r.last_login_at); }]],
-      orders: [["Order no.", "ref"], ["Title", "title"], ["Customer", who], ["Status", st(ORDER_ST)], ["Amount", function (r) { return money(r.amount_minor, r.currency); }], ["Created", function (r) { return day(r.created_at); }]],
+      orders: [["Order no.", "ref"], ["Title", "title"], ["Customer", who], ["Status", st(ORDER_ST)], ["When", function (r) { return timingName(r.timing) || "—"; }], ["Amount", function (r) { return money(r.amount_minor, r.currency); }], ["Created", function (r) { return day(r.created_at); }]],
       payments: [["Order no.", "ref"], ["UPI reference", function (r) { return r.reference || "—"; }], ["Customer", who], ["Status", st(PAY_ST)], ["Amount", function (r) { return money(r.amount_minor, r.currency); }], ["Created", function (r) { return day(r.created_at); }], ["Confirmed on", function (r) { return day(r.confirmed_at); }]]
     };
     function get(path) {
@@ -1195,6 +1495,7 @@
         cols.forEach(function (c) {
           var td = doc.createElement("td"), v = typeof c[1] === "function" ? c[1](r) : r[c[1]];
           if (v && typeof v === "object") { td.textContent = v.text; td.setAttribute("data-s", v.s); td.className = "adm-st"; } else td.textContent = v === null || v === undefined || v === "" ? "—" : String(v);
+          if (tab === "orders" && c[1] === "ref") { td.textContent = ""; var ob = doc.createElement("button"); ob.type = "button"; ob.className = "adm-open link"; ob.setAttribute("data-ref", r.ref); ob.textContent = r.ref; td.appendChild(ob); tr.classList.add("adm-click"); }
           if (td.className !== "adm-st") td.dir = "auto";   // emails, references and English titles keep their own direction in Arabic
           td.setAttribute("data-label", T(c[0])); tr.appendChild(td);
         });
@@ -1215,6 +1516,156 @@
         if (!term) { var n = $('[data-count="' + tab + '"]', box); if (n) n.textContent = j.total; }
       });
     }
+    /* ---------- one order: details, price and parts, status, private note, history (v3.8) */
+    var dEl = $("[data-adm-order]"), dsh = dEl ? sheet(dEl) : null, dCur = null, dBusy = false, split = "100";
+    var HIST = { "order.created": "Order placed", "order.priced": "Price set", "order.part_opened": "Asked for the next part", "order.status": "Status changed", "order.note": "Note saved", "order.cancelled": "Cancelled by the customer" };
+    var MOVE = { in_progress: "Start work", delivered: "Mark delivered", cancelled: "Cancel order" };
+    function dq(s) { return $(s, dEl); }
+    function dnote(t, cls) { var st = dq("[data-ad-status]"); st.className = "form-status acct-status" + (cls ? " " + cls : ""); st.textContent = t || ""; }
+    function dfact(dl, k, v) { if (!v && v !== 0) return; var dt = doc.createElement("dt"), dd = doc.createElement("dd"); dt.textContent = T(k); dd.textContent = v; dd.dir = "auto"; dl.appendChild(dt); dl.appendChild(dd); }
+    function rupeeParts() { return $$("[data-ad-parts] input", dEl).map(function (i) { return Math.max(0, Math.round(+i.value || 0)); }); }
+    function splitInto(total, how) {
+      if (!(total > 0)) return [Math.max(0, total || 0)];
+      if (how === "lakh") {
+        var n = Math.ceil(total / 100000), base = Math.floor(total / n), out = [];
+        for (var k = 0; k < n; k++) out.push(base + (k < total - base * n ? 1 : 0));
+        return out;
+      }
+      var pc = how.split(",").map(Number), acc = 0, res = pc.map(function (x, k) { if (k === pc.length - 1) return total - acc; var v = Math.round(total * x / 100); acc += v; return v; });
+      return res.filter(function (v) { return v > 0; });
+    }
+    function drawParts(list) {
+      var ol = dq("[data-ad-parts]"); ol.textContent = "";
+      list.forEach(function (r, k) {
+        var li = doc.createElement("li"), lab = doc.createElement("label"), sp = doc.createElement("span"), inp = doc.createElement("input");
+        sp.textContent = partName(k + 1, list.length); inp.type = "number"; inp.min = "0"; inp.step = "1"; inp.inputMode = "numeric"; inp.dir = "ltr"; inp.value = r;
+        lab.className = "fld"; lab.appendChild(sp); lab.appendChild(inp); li.appendChild(lab); ol.appendChild(li);
+      });
+      ol.hidden = list.length < 2;
+      partsInfo();
+    }
+    function partsInfo() {
+      var list = rupeeParts(), sum = list.reduce(function (a, b) { return a + b; }, 0), typed = Math.round(+dq("[data-ad-total]").value || 0);
+      var txt = list.length > 1 ? T("Total {p} in {n} parts.").replace("{p}", inr(sum)).replace("{n}", list.length) : "";
+      if (list.length > 1 && sum !== typed) txt += " " + T("The parts add up to {p}, not {t}.").replace("{p}", inr(sum)).replace("{t}", inr(typed));
+      dq("[data-ad-sum]").textContent = txt;
+      dq("[data-ad-warn]").hidden = !list.some(function (r) { return r > 100000; });
+      dq("[data-ad-send-t]").textContent = T(sum === 0 ? "Accept for free" : "Send the price");
+    }
+    function drawDrawer(o) {
+      dCur = o; var i = o.info || {}, it = catItem(i.service);
+      dq("[data-ad-ref]").textContent = o.ref;
+      dq("[data-ad-st]").textContent = T(ORDER_ST[o.status] || o.status);
+      dq("[data-ad-name]").textContent = orderName(o);
+      var dl = dq("[data-ad-facts]"); dl.textContent = "";
+      dfact(dl, "Source", T(i.source === "form" ? "Order form" : "Services page"));
+      dfact(dl, "When", timingName(i.timing));
+      var tierRow = it && it.tiers ? it.tiers.filter(function (t) { return t.id === i.tier; })[0] : null;
+      if (it) dfact(dl, "Base price", (tierRow ? inrRange(tierRow.min, tierRow.max) : basePrice(it)) + (it.unit ? " " + T(CAT.data.unitWords[String(it.unit)]) : ""));
+      dfact(dl, o.amount_minor === null || o.amount_minor === undefined ? "Estimate" : "Price", o.amount_minor === 0 ? T("Free") : o.amount_minor !== null && o.amount_minor !== undefined ? money(o.amount_minor, o.currency) : i.est || it ? estText(i.est) : "");
+      if (i.free) dfact(dl, "Note", T("First thumbnail: free"));
+      if (i.source === "form") { dfact(dl, "Budget", i.budget ? T(i.budget) : ""); dfact(dl, "Liked", (i.likes || []).join(", ")); dfact(dl, "On the form", [i.name, i.contact].filter(Boolean).join(" · ")); }
+      dfact(dl, "Created", day(o.created_at));
+      if (o.priced_at) dfact(dl, "Priced", day(o.priced_at));
+      // customer: email and WhatsApp as links
+      var cu = dq("[data-ad-cust]"); cu.textContent = "";
+      if (o.customer) {
+        var nm = doc.createElement("b"); nm.textContent = o.customer.name || "—"; cu.appendChild(nm); cu.appendChild(doc.createElement("br"));
+        var ml = doc.createElement("a"); ml.className = "link"; ml.href = "mailto:" + o.customer.email + "?subject=" + encodeURIComponent(o.ref); ml.textContent = o.customer.email; ml.dir = "ltr"; cu.appendChild(ml);
+        if (i.phone) { cu.appendChild(doc.createElement("br")); var wa = doc.createElement("a"); wa.className = "link"; wa.target = "_blank"; wa.rel = "noopener"; wa.dir = "ltr"; wa.href = "https://wa.me/" + i.phone.replace(/\D/g, "").replace(/^0+/, ""); wa.textContent = "WhatsApp " + i.phone; cu.appendChild(wa); }
+      }
+      dq("[data-ad-brief]").textContent = o.brief || "—";
+      // price: quick picks from the catalog, then the split
+      var ps = dq("[data-ad-price]"); ps.hidden = !o.can.price;
+      if (o.can.price) {
+        var quick = dq("[data-ad-quick]"), picks = []; quick.textContent = "";
+        var n = it && it.unit ? (i.units || 1) : 1;
+        if (i.free) picks.push([T("Free"), 0]);
+        if (it && it.kind === "fixed" && !i.tier) [100, 120, 130, 140, 150].forEach(function (pc) { picks.push(["×" + pc / 100, Math.round(it.min * n * pc / 100)]); });
+        if (i.est && i.est.min) { picks.push([T("Low"), i.est.min]); if (i.est.max) picks.push([T("High"), i.est.max]); }
+        picks.forEach(function (pk) {
+          var b = doc.createElement("button"); b.type = "button"; b.className = "btn btn--small"; b.textContent = pk[0] + " · " + inr(pk[1]);
+          b.addEventListener("click", function () { dq("[data-ad-total]").value = pk[1]; drawParts(splitInto(pk[1], split)); });
+          quick.appendChild(b);
+        });
+        quick.hidden = !picks.length;
+        var start = o.amount_minor !== null && o.amount_minor !== undefined ? Math.round(o.amount_minor / 100) : i.free ? 0 : i.est && i.est.min ? i.est.min : "";
+        dq("[data-ad-total]").value = start; split = o.parts.length > 1 ? "custom" : "100";
+        drawParts(o.parts.length > 1 ? o.parts.map(function (p) { return Math.round(p.amount_minor / 100); }) : [start === "" ? 0 : start]);
+      }
+      // payment plan
+      var pb = dq("[data-ad-plan-box]"), pl = dq("[data-ad-plan]"); pl.textContent = ""; pb.hidden = !o.parts.length;
+      o.parts.forEach(function (p) {
+        var li = doc.createElement("li");
+        [["o-t", partName(p.seq, o.parts.length)], ["o-s", T(PART_ST[p.status] || p.status)], ["o-a", money(p.amount_minor, o.currency)]].forEach(function (c) {
+          var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", p.status === "due" ? "pending" : p.status); li.appendChild(s);
+        });
+        pl.appendChild(li);
+      });
+      dq("[data-ad-next]").hidden = !o.can.next_part;
+      // status moves
+      var mv = dq("[data-ad-moves]"), mb = dq("[data-ad-move-btns]"); mb.textContent = ""; mv.hidden = !o.can.status.length;
+      o.can.status.forEach(function (to) {
+        var b = doc.createElement("button"), sp = doc.createElement("span"); b.type = "button"; b.className = "btn btn--small" + (to === "cancelled" ? " btn--ghost" : ""); sp.textContent = T(MOVE[to]); b.appendChild(sp);
+        var go = function () { act({ action: "status", status: to }, T("Saved. ✅")); };
+        if (to === "cancelled") twoStep(b, MOVE[to], "Tap again to confirm", go); else b.addEventListener("click", go);
+        mb.appendChild(b);
+      });
+      dq("[data-ad-note]").value = o.note || "";
+      // history, newest first
+      var hl = dq("[data-ad-hist]"); hl.textContent = "";
+      (o.history || []).forEach(function (h) {
+        var li = doc.createElement("li"), t = doc.createElement("span"), w = doc.createElement("span"), d = h.data || {};
+        t.className = "ad-h-t"; t.textContent = day(h.at);
+        var extra = h.action === "order.priced" ? " · " + (d.total === 0 ? T("Free") : inr(d.total)) + (d.parts > 1 ? " · " + T("{n} parts").replace("{n}", d.parts) : "")
+          : h.action === "order.status" ? " · " + T(ORDER_ST[d.from] || d.from) + " → " + T(ORDER_ST[d.to] || d.to)
+          : h.action === "order.part_opened" ? " · " + inr(d.amount) : h.action === "order.created" && d.amount ? " · " + inr(d.amount) : "";
+        w.textContent = T(HIST[h.action] || h.action) + extra; li.appendChild(t); li.appendChild(w); hl.appendChild(li);
+      });
+      dq("[data-ad-body]").hidden = false;
+    }
+    function openOrder(ref) {
+      if (!dsh) return;
+      dq("[data-ad-ref]").textContent = ref; dq("[data-ad-body]").hidden = true; dnote(T("Checking…")); dsh.open();
+      get("admin/order?ref=" + encodeURIComponent(ref)).then(function (j) {
+        if (!j.ok) return dnote(shopError(j), "err");
+        dnote(""); drawDrawer(j.order);
+      });
+    }
+    function act(body, okText) {
+      if (dBusy || !dCur) return; dBusy = true; body.ref = dCur.ref;
+      $$("button", dEl).forEach(function (b) { b.disabled = true; });
+      apiCall("admin/order", body).then(function (j) {
+        dBusy = false; $$("button", dEl).forEach(function (b) { b.disabled = false; });
+        if (!j.ok) return dnote(shopError(j), "err");
+        drawDrawer(j.order); dnote(okText, "ok"); sfx("switch");
+        var card = $(".panel-card", dEl); if (card && card.scrollTo) card.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });   // the message sits at the top
+        if (tab === "orders") load();
+      });
+    }
+    if (dEl) {
+      dq("[data-ad-total]").addEventListener("input", function () { var v = Math.round(+this.value || 0); drawParts(split === "custom" ? [v] : splitInto(v, split)); });
+      $$("[data-split]", dEl).forEach(function (b) { b.addEventListener("click", function () { split = b.getAttribute("data-split"); drawParts(splitInto(Math.round(+dq("[data-ad-total]").value || 0), split)); }); });
+      dq("[data-ad-parts]").addEventListener("input", function () { split = "custom"; partsInfo(); });
+      dq("[data-ad-send]").addEventListener("click", function () {
+        var list = rupeeParts(), sum = list.reduce(function (a, b) { return a + b; }, 0);
+        if (list.length > 1 && list.some(function (r) { return r < 1; })) return dnote(T(SHOP_ERR.bad_parts), "err");
+        if (list.length > 1) list = list.filter(function (r) { return r > 0; });
+        act({ action: "price", parts: list.length ? list : [0] }, T(sum === 0 ? "Accepted. The customer has been told. ✅" : "Price sent to the customer. ✅"));
+      });
+      dq("[data-ad-next]").addEventListener("click", function () { act({ action: "next_part" }, T("Asked for the next part. ✅")); });
+      dq("[data-ad-save-note]").addEventListener("click", function () { act({ action: "note", note: dq("[data-ad-note]").value }, T("Note saved. ✅")); });
+    }
+    tbody.addEventListener("click", function (e) {
+      if (tab !== "orders") return;
+      var b = e.target.closest("[data-ref]") || e.target.closest("tr"); if (!b) return;
+      var r = b.getAttribute("data-ref") || ($("[data-ref]", b) && $("[data-ref]", b).getAttribute("data-ref")); if (r) openOrder(r);
+    });
+    function pickTab(b) {
+        tab = b.getAttribute("data-tab");
+        $$("[data-tab]", box).forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        return load();
+    }
     $$("[data-tab]", box).forEach(function (b) {
       b.addEventListener("click", function () {
         tab = b.getAttribute("data-tab");
@@ -1227,7 +1678,9 @@
     get("auth/me").then(function (j) {
       if (!j.ok || !j.user) return show("out");
       if (!j.admin) return show("no");
-      show("in"); load();
+      show("in");
+      var want = (new URLSearchParams(location.search).get("order") || "").toUpperCase();   // the link in an order email
+      if (/^TAS-[2-9A-HJ-NP-Z]{6}$/.test(want)) { pickTab($('[data-tab="orders"]', box)); openOrder(want); } else load();
       ["orders", "payments"].forEach(function (k) { get("admin/" + k).then(function (r) { var n = $('[data-count="' + k + '"]', box); if (n && r.ok) n.textContent = r.total; }); });
     });
   })();

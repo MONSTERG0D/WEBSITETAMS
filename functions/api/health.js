@@ -3,8 +3,8 @@
 import { json } from "../_lib/http.js";
 import { config } from "../_lib/auth.js";
 
-const TABLES = ["users", "sessions", "login_events", "services", "orders", "payments", "audit_log"];
-const SCHEMA_NEEDED = 2;
+const TABLES = ["users", "sessions", "login_events", "services", "orders", "payments", "audit_log", "order_parts"];
+const SCHEMA_NEEDED = 3;
 
 export async function onRequestGet({ env }) {
   const c = config(env);

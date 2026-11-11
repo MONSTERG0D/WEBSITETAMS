@@ -2,7 +2,7 @@
 
 The backend runs on Cloudflare, next to the static site: Pages Functions for the API and a D1 database for the data. This file is the map. It holds no secrets; secrets live only in Cloudflare.
 
-Built so far: the foundation (step 1), sign-in with the account page (step 2) and the owner-only admin page (step 3). Orders and UPI payments come in later steps.
+Built so far: the foundation (step 1), sign-in with the account page (step 2), the owner-only admin page (step 3) and services with orders (step 4). UPI payments come in step 5.
 
 ## Where things are
 
@@ -17,8 +17,13 @@ Built so far: the foundation (step 1), sign-in with the account page (step 2) an
 | `functions/api/auth/email/` | `start.js` emails a 6-digit code; `verify.js` checks it and signs them in. |
 | `functions/api/auth/logout.js` | `POST /api/auth/logout` — ends the session. |
 | `functions/api/account/orders.js` | `GET /api/account/orders` — the signed-in person's own orders. |
+| `functions/api/account/order.js` | `GET /api/account/order?ref=` — one of their orders. `POST` with `action: "cancel"` cancels it while nothing is paid. |
+| `functions/api/orders.js` | `POST /api/orders` — place an order, from the Services page (one service) or from the order form (`source: "form"`). |
+| `functions/api/admin/order.js` | `GET /api/admin/order?ref=` — one order for the owner. `POST` actions: `price` (one part or several), `next_part`, `status`, `note`. |
+| `functions/_lib/catalog.js` | The price list and pricing rules the server charges. **Generated** by `_build/build.py` from `_build/catalog.py` and `_build/pricing_core.js` — do not edit it by hand. |
+| `functions/_lib/orders.js`, `ordermail.js` | Order rules (references, limits, parts) and the customer emails in nine languages. |
 | `functions/_lib/` | Shared helpers. Not routes. `auth.js` holds accounts, sessions, the sign-in history and the rate limits. |
-| `functions/api/admin/` | `users.js`, `orders.js`, `payments.js` — owner-only lists. `?q=` searches, `?format=csv` downloads a CSV. Read-only. |
+| `functions/api/admin/` | `users.js`, `orders.js`, `payments.js` — owner-only lists. `?q=` searches, `?format=csv` downloads a CSV. `order.js` — one order, and the owner's changes to it. |
 | `functions/_lib/admin.js` | Search, paging (200 rows on screen, 5000 per CSV) and safe CSV writing for the admin routes. |
 | `admin.html` | The admin page (built by `_build/build.py`; its script is the "admin page" part of `assets/js/main.js`). |
 | `account.html` | The account page (built by `_build/build.py`; its script is the "account + sign-in" part of `assets/js/main.js`). |
@@ -48,6 +53,7 @@ Both are connected to the Pages project `websitetams` under the variable name `D
 | `payments` | One row per payment attempt. `provider` is `upi` now; a gateway such as Razorpay fits later without changing the table. |
 | `audit_log` | Who did what: price set, payment confirmed, account deleted. |
 | `login_codes` | The 6-digit email codes, stored only as a keyed hash. 10 minutes, one use, 5 tries. |
+| `order_parts` | What is paid for an order: one part, or an advance, milestones and a final part. `locked` → `due` → `paid` (or `void` when replaced). |
 | `schema_migrations`, `app_meta` | Bookkeeping: which schema files ran, and which database this is. |
 
 Money is stored as whole numbers in the smallest unit (paise) with a currency code. Times are Unix seconds, UTC.
@@ -70,7 +76,7 @@ npx wrangler@latest d1 execute tas-db-preview --remote --yes --file _db/setup/la
 
 Then, in the Cloudflare dashboard: Workers & Pages → `websitetams` → Settings → Bindings → Add → D1 database. Variable name `DB`. Choose `tas-db` for the Production environment and `tas-db-preview` for the Preview environment. A binding takes effect on the next deployment.
 
-Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"tables": 7`, the right `"database"` label, and `"schema"` equal to `"schema_needed"`. The `"signin"` part says yes or no for each sign-in setting, so a missing one is easy to spot.
+Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"tables": 8`, the right `"database"` label, and `"schema"` equal to `"schema_needed"` (3 since step 4). The `"signin"` part says yes or no for each sign-in setting, so a missing one is easy to spot.
 
 ## How sign-in works
 
@@ -84,8 +90,23 @@ Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"ta
 
 - Only the address in `ADMIN_EMAIL` gets in, and only after signing in with it (Google or email code). The setting lives in Cloudflare, not in the database, so no database row can make someone an admin. Everyone else gets "only for the site owner"; the server refuses them too, not just the page.
 - Shows users (name, email, how they signed in, status, order count, sign-up time, last login), orders and payments. There are no passwords to show; none exist.
+- Clicking an order number opens the order in a side panel: details, customer, brief, price and parts, status buttons, a private note and the history. A link in an order email opens it directly (`/admin.html?order=TAS-XXXXXX`).
 - Search covers email, name, order number, title, status and UPI reference. The CSV follows the search. A cell that a spreadsheet could run as a formula is prefixed with an apostrophe. Every export is written to `audit_log`.
-- On each new sign-up the owner gets an email at `NOTIFY_EMAIL` (default `ak4418561@gmail.com`). If that email fails, the visitor still signs in. New-order emails come with orders (step 4). The WhatsApp and Gmail order form is unchanged.
+- On each new sign-up the owner gets an email at `NOTIFY_EMAIL` (default `ak4418561@gmail.com`). If that email fails, the visitor still signs in. Every new order is emailed too (step 4). The WhatsApp and Gmail order form is unchanged.
+
+## Services, prices and orders (step 4)
+
+- **The price list lives in one file: `_build/catalog.py`.** The build turns it into the Services page, the chips on the order form, `assets/js/catalog.js` (the live price in the order panel) and `functions/_lib/catalog.js` (what the server charges). To change a price: edit `catalog.py`, run `python3 _build/build.py`, push. No database step is needed.
+- The `services` table keeps a copy of each service's name and base price, written with every order, so an old order always shows what it was placed under.
+- **Instant orders:** a single-price service with ASAP (×2) or 2–4 weeks (−5%). The server works the price out from its own catalog (never from the browser), the order starts as `pending` with one part `due`, and the customer gets a pay email.
+- **Requests:** ranges, "from" prices, "price after talking", 1 week, Flexible, and anything sent with "Send to my account" on the order form. They start as `requested`. The owner sets the price in the admin page: one part, 50/50, 30/40/30 or parts of at most ₹1 lakh (UPI apps usually stop around ₹1 lakh a day). The first part becomes `due` and the customer gets the pay link; later parts are asked for with "Ask for the next part".
+- **First thumbnail free:** the first thumbnail order on an account arrives priced at ₹0. The owner accepts it with "Accept for free" (status `in_progress`).
+- Length-based services (YouTube video per minute, motion tracking per 10 seconds, explainer per 3 minutes, and the ranges per 10 seconds) multiply by the length the customer picks, up to 10 units. "Longer" becomes a request.
+- **Customer cancel:** possible while the order is `requested` or `pending` and nothing has been paid or submitted. The owner gets an email.
+- **Limits per account:** 6 orders an hour, 20 a day, 10 open requests at once.
+- **Emails:** the customer gets "request received" or "ready to pay" in their language; the owner gets every new order (with a link that opens it in the admin page) and every customer cancel. The WhatsApp and Gmail buttons on the order form work exactly as before.
+- Every change is written to `audit_log` (`order.created`, `order.priced`, `order.part_opened`, `order.status`, `order.note`, `order.cancelled`).
+- The pay link opens the order on the account page (`/account.html?order=TAS-XXXXXX`). The UPI button and QR code arrive in step 5; until then it says payment opens soon.
 
 ## Changing the schema later
 
@@ -114,7 +135,7 @@ Entered by hand in Cloudflare (Settings → Variables and Secrets), for Producti
 | `ADMIN_EMAIL` | variable | step 3 | The one address allowed into the admin page. |
 | `UPI_ID`, `UPI_PAYEE_NAME` | variable | step 5 | Where UPI payments go. |
 
-Names for steps 4 and 5 are the plan; each step confirms its own.
+Step 4 needs no new settings. The names for step 5 are the plan; that step confirms its own.
 
 Google sign-in switches on when `SESSION_SECRET` and both Google values are present. Email-code sign-in switches on when `SESSION_SECRET`, both Turnstile values, `EMAIL_API_KEY` and `MAIL_FROM` are present. Until then the account page says sign-in is not switched on yet, and the rest of the site is unaffected.
 
@@ -124,4 +145,6 @@ The address Google must be told to send people back to is `https://<site>/api/au
 
 Planned API areas: `/api/auth`, `/api/account`, `/api/orders`, `/api/payments`, `/api/admin`. Reserved for after Sundown Trail: `/api/game` (cloud saves, leaderboards, player stats), `/api/feedback` (moderated wall), `/api/ai` (assistant).
 
-Each of those is new tables that point at `users.id`, added by a new migration file. None of the seven tables above has to change: `sessions.client` already tells the game from the website, and `audit_log` already records moderation. Save files would go in R2, and the assistant would use Workers AI with Vectorize; both are extra bindings beside `DB`.
+Each of those is new tables that point at `users.id`, added by a new migration file. None of the tables above has to change: `sessions.client` already tells the game from the website, and `audit_log` already records moderation. Save files would go in R2, and the assistant would use Workers AI with Vectorize; both are extra bindings beside `DB`.
+
+The shop (merch and products) and the free 3D assets fit the same way: a `products` table and an `order_items` table (one row per thing bought) beside `orders`, using the same accounts, `orders` (kind `fixed`, no `service_id`), `order_parts` and `payments`. Free downloads need no order at all, only a `downloads` table if counting them is wanted.

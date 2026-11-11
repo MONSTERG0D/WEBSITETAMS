@@ -17,14 +17,15 @@ export async function sendMail(env, { to, subject, text, html }) {
 }
 
 /* A short plain note to the site owner (new sign-up, new order). Goes to NOTIFY_EMAIL, or the
-   address already printed on the site. Never throws: a notice that fails must not break a sign-in. */
+   address already printed on the site. `link` opens the admin page on the site that sent the notice
+   (the preview or the live domain). Never throws: a notice that fails must not break a sign-in or an order. */
 const OWNER_DEFAULT = "ak4418561@gmail.com";
 const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-export async function notifyOwner(env, subject, lines) {
+export async function notifyOwner(env, subject, lines, link = "https://theaamirsheikh.com/admin.html") {
   if (!env.EMAIL_API_KEY || !env.MAIL_FROM) return false;
-  const text = lines.join("\n") + "\n\nAdmin page: https://theaamirsheikh.com/admin.html";
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#0b0b0d">${lines.map((l) => `<div>${escHtml(l) || "&nbsp;"}</div>`).join("")}<p style="margin-top:16px"><a href="https://theaamirsheikh.com/admin.html">Open the admin page</a></p></div>`;
+  const text = lines.join("\n") + "\n\nAdmin page: " + link;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#0b0b0d">${lines.map((l) => `<div style="white-space:pre-wrap">${escHtml(l) || "&nbsp;"}</div>`).join("")}<p style="margin-top:16px"><a href="${escHtml(link)}">Open the admin page</a></p></div>`;
   return sendMail(env, { to: env.NOTIFY_EMAIL || OWNER_DEFAULT, subject: subject + " — THE AAMIR SHEIKH", text, html });
 }
 

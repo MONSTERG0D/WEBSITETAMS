@@ -8,9 +8,11 @@ v3: THE AAMIR SHEIKH branding · 3 interfaces (Riot / Noir / Village) each with
 its own music · accessibility panel · order + feedback forms (WhatsApp + Gmail)
 · original-quality video (HLS for Money Follows) · less text, more icons.
 """
-import os, html, re, json
+import os, sys, html, re, json
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "_build"))
+import catalog as CAT   # the price list (v3.8): _build/catalog.py
 SITE = "https://theaamirsheikh.com"
 BRAND = "THE AAMIR SHEIKH"
 EMAIL = "ak4418561@gmail.com"
@@ -157,7 +159,7 @@ BOOT = ("<script>(function(){var d=document.documentElement,s={};try{s=JSON.pars
         "var L=s.lang||'en';d.setAttribute('lang',L);d.setAttribute('data-lang',L);if(L==='ar')d.setAttribute('dir','rtl');"
         "if(s.text)d.style.fontSize=s.text+'%';if(s.bright&&s.bright!=100)d.style.setProperty('--bright',s.bright/100)})()</script>")
 
-def head(title, desc, path, p):
+def head(title, desc, path, p, scripts=()):
     url = SITE + "/" + ("" if path == "index.html" else path)
     full = title if title.startswith(BRAND) else f"{title} — {BRAND}"
     return f'''<!doctype html>
@@ -186,7 +188,7 @@ def head(title, desc, path, p):
 <noscript><link rel="stylesheet" href="{FONTS}"></noscript>
 <script>window.TAS_ROOT="{p}";</script>
 <script src="{p}assets/js/i18n.js" defer></script>
-<script src="{p}assets/js/main.js" defer></script>
+{"".join(f'<script src="{p}assets/js/{js}" defer></script>' + chr(10) for js in scripts)}<script src="{p}assets/js/main.js" defer></script>
 </head>
 '''
 
@@ -372,12 +374,12 @@ def about_nav(current, p):
     links = "".join(f'<a href="{p}{c[0]}"{cur(c[0])}>{ico(c[5])}<span>{c[3]}</span></a>' for c in CHAPTERS if c[0] in ABOUT)
     return f'<nav class="subnav wrap" aria-label="About"><span class="label subnav-k">{ico("user-round")} About</span><div class="subnav-l">{links}</div></nav>\n'
 
-def page(path, title, desc, body, current=None, depth=0, home=False, noindex=False):
+def page(path, title, desc, body, current=None, depth=0, home=False, noindex=False, scripts=(), extra=""):
     p = "../" * depth
     cls = ' class="home"' if home else ""
     if primary_of(current or path) == "purpose.html": body = about_nav(current or path, p) + body
-    doc = (head(title, desc, path, p) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p)
-           + settings_panel() + attract(p) + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + "</body>\n</html>\n")
+    doc = (head(title, desc, path, p, scripts) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p)
+           + settings_panel() + attract(p) + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + extra + "</body>\n</html>\n")
     doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
     if noindex: doc = doc.replace("<title>", '<meta name="robots" content="noindex">\n<title>', 1)
     out = os.path.join(ROOT, path)
@@ -807,25 +809,109 @@ def build_inspirations():
 </section>''' + chapter_nav("inspirations.html", "")
     page("inspirations.html", "Inspirations", "The wolves, games, films, anime and people that inspire THE AAMIR SHEIKH. Chapter V.", body)
 
-# ================================================================= SERVICES
-SERVICES = [
-    # group, icon, items
-    ("Video editing", "scissors", ["Reels / Shorts", "YouTube edit", "Ad / promo", "Colour grading", "Motion tracking"]),
-    ("Motion graphics", "sparkles", ["Kinetic typography", "Logo animation", "Title sequence", "Explainer video"]),
-    ("3D", "box", ["Product render", "3D model", "3D animation"]),
-    ("Design", "pen-tool", ["Poster", "Thumbnail", "Logo", "Social posts"]),
-    ("Web", "code-xml", ["Portfolio site", "Landing page", "Fix / speed up my site"]),
-    ("Games", "gamepad-2", ["Game UI / menus", "Prototype"]),
-    ("Robotics & code", "bot", ["Arduino / ESP32", "Python script", "Simulation"]),
-]
+# ================================================================= SERVICES (v3.8: prices from _build/catalog.py)
+CATD = CAT.data()
+
+def inr(n):
+    """1500000 -> 15,00,000 (Indian grouping), for the page as written. The page script re-formats
+    every price in the visitor's language."""
+    s = str(int(n))
+    if len(s) <= 3: return s
+    head_, tail = s[:-3], s[-3:]
+    parts = []
+    while len(head_) > 2: parts.insert(0, head_[-2:]); head_ = head_[:-2]
+    if head_: parts.insert(0, head_)
+    return ",".join(parts) + "," + tail
+
+def price_text(it):
+    k = it["kind"]
+    if k == "quote": return "Price after talking"
+    if k == "from": return f"From ₹{inr(it['min'])}"
+    if k == "fixed": return f"₹{inr(it['min'])}"
+    return f"₹{inr(it['min'])}–{inr(it['max'])}"
+
+def write_catalog():
+    """The price list as code: one copy for the page script, one for the server (functions/_lib)."""
+    core = open(os.path.join(ROOT, "_build", "pricing_core.js"), encoding="utf-8").read()
+    blob = json.dumps(CATD, ensure_ascii=False, separators=(",", ":"))
+    note = "/* Generated by _build/build.py from _build/catalog.py and _build/pricing_core.js.\n   Do not edit this file: change those two and run the build. */\n"
+    server = note + "const CATALOG = " + blob + ";\n\n" + core + "\nexport { CATALOG, quote, lengthOf, timingOf };\n"
+    client = note + "(function () {\n\"use strict\";\nvar CATALOG = " + blob + ";\n\n" + core + "\nwindow.TAS_CAT = { data: CATALOG, quote: quote, lengthOf: lengthOf, timingOf: timingOf };\n})();\n"
+    for rel, text in (("functions/_lib/catalog.js", server), ("assets/js/catalog.js", client)):
+        with open(os.path.join(ROOT, rel), "w", encoding="utf-8") as f: f.write(text)
+        print("wrote", rel)
+
+def svc_row(iid, it):
+    subs = []
+    if it["unit"]: subs.append(CATD["unitWords"][str(it["unit"])])
+    if it["note"]: subs.append(it["note"])
+    sub = "".join(f'<span class="svc-u">{esc(x)}</span>' for x in subs)
+    tiers = ""
+    if it["tiers"]:
+        tiers = '<span class="svc-tiers">' + "".join(
+            f'<span class="svc-t"><span>{esc(t["name"])}</span><span class="svc-tp" data-tier-price="{t["min"]}-{t["max"]}" data-no-i18n>₹{inr(t["min"])}–{inr(t["max"])}</span></span>' for t in it["tiers"]) + "</span>"
+    return (f'<li><button type="button" class="svc-r" data-order="{iid}" aria-haspopup="dialog" aria-controls="osheet">'
+            f'<span class="svc-top"><span class="svc-n">{esc(it["name"])}</span><span class="svc-dots" aria-hidden="true"></span>'
+            f'<span class="svc-p" data-price="{iid}" data-no-i18n>{price_text(it)}</span><span class="svc-go" aria-hidden="true">{ico("arrow-right")}</span></span>'
+            f'{sub}{tiers}</button></li>')
+
+TIMING_CHIP = {"asap": "×2", "week": None, "month": "−5%", "flex": None}
+
+def order_sheet():
+    """The order panel on the Services page. One panel, filled by main.js for the service picked."""
+    chips = ""
+    for t in CATD["timing"]:
+        mark = TIMING_CHIP[t["id"]]
+        small = " <small>" + mark + "</small>" if mark else ""
+        chips += f'<label class="chip"><input type="radio" name="timing" value="{t["id"]}"><span>{esc(t["name"])}{small}</span></label>'
+    return f'''<div class="panel-wrap osheet" id="osheet" role="dialog" aria-modal="true" aria-labelledby="os-h" aria-hidden="true" data-osheet>
+  <div class="panel-card">
+    <div class="panel-top"><h2 id="os-h" data-os-name data-no-i18n>Order</h2><button type="button" class="pill icon-pill" data-os-close aria-label="Close">{ico("x")}</button></div>
+    <p class="os-base"><span class="label" data-os-group data-no-i18n></span><span class="os-bp" data-os-base data-no-i18n></span></p>
+    <form class="os-form" data-os-form novalidate>
+      <fieldset class="os-f" data-os-tiers hidden><legend class="label">{ico("layers")} Style</legend><div class="chips" data-os-tier-list data-no-i18n></div></fieldset>
+      <label class="fld" data-os-len hidden><span>Length (min:sec)</span><select name="units" data-os-units data-no-i18n></select></label>
+      <fieldset class="os-f"><legend class="label">{ico("clock")} When do you need it?</legend><div class="chips">{chips}</div></fieldset>
+      <label class="fld"><span>What do you need? *</span><textarea name="brief" rows="5" maxlength="3000" placeholder="Links to footage or examples, the style you like, where it will be posted…"></textarea></label>
+      <label class="fld"><span>WhatsApp number (optional)</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" dir="ltr" maxlength="24"></label>
+      <div class="summary os-sum" aria-live="polite"><p class="label">{ico("check")} <span data-os-total-k data-no-i18n>Price</span></p><p class="os-total" data-os-total data-no-i18n></p><p class="mini os-how" data-os-how data-no-i18n></p></div>
+      <p class="form-status" role="status" aria-live="polite" data-os-status></p>
+      <button type="submit" class="btn btn--solid os-go" data-os-submit><span data-os-submit-t data-no-i18n>Send request</span></button>
+      <p class="mini muted" data-os-out hidden>You need to sign in to order. What you typed here is kept.</p>
+    </form>
+    <div class="os-done" data-os-done hidden>
+      <p class="h-m" data-os-done-h data-no-i18n></p>
+      <p data-os-done-p data-no-i18n></p>
+      <div class="m-links"><a class="btn btn--solid" data-os-see href="account.html">{ico("shopping-bag")} See your order</a><button type="button" class="btn" data-os-close>Close</button></div>
+    </div>
+  </div>
+</div>
+'''
 
 def build_services():
-    cards = "".join(f'''<li class="svc rv"><span class="svc-i">{ico(icon)}</span><h3>{g}</h3><ul>{"".join(f"<li>{esc(x)}</li>" for x in items)}</ul>
-<a class="btn btn--small" href="order.html?want={re.sub(r"[^a-z0-9]+", "-", g.lower()).strip("-")}">{ico("shopping-bag")} Order</a></li>''' for g, icon, items in SERVICES)
+    items = CATD["items"]
+    cards = ""
+    for gid, gname, icon in CAT.GROUPS:
+        rows = "".join(svc_row(iid, items[iid]) for iid in CATD["order"] if items[iid]["g"] == gid)
+        cards += (f'<li class="svc rv"><span class="svc-i">{ico(icon)}</span><h3>{esc(gname)}</h3><ul class="svc-l">{rows}</ul>'
+                  f'<a class="btn btn--small" href="order.html?want={gid}">{ico("shopping-bag")} Custom order</a></li>')
+    timing = [("ASAP", "×2", "Double the price."), ("1 week", "×1–1.5", "I confirm the price: the base price or up to ×1.5."),
+              ("2–4 weeks", "−5%", "5% off."), ("Flexible", "?", "We agree on it together.")]
+    thtml = "".join(f'<li class="rv"><span class="tmg-x" data-no-i18n>{x}</span><h3>{t}</h3><p>{d}</p></li>' for t, x, d in timing)
     steps = [("message-circle", "Brief", "Goal, audience, deadline."), ("pen-tool", "Board", "References + direction."), ("zap", "Build", "Progress + 2 revisions."), ("send", "Deliver", "Final files + project files.")]
     shtml = "".join(f'<div class="rv"><span class="st-i">{ico(i)}</span><p class="label">Step {k+1}</p><h3>{t}</h3><p>{d}</p></div>' for k, (i, t, d) in enumerate(steps))
     body = page_head("VI", "Side quests", "Side quests <em>welcome.</em>", "A few freelance projects alongside my studies.", "sparkles")
-    body += f'''<section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)"><ul class="svcs">{cards}</ul></section>
+    body += f'''<section class="wrap" style="padding-bottom:clamp(32px,5vw,72px)"><p class="mini muted svc-hint">{ico("mouse-pointer-click")} Tap a service to order it.</p><ul class="svcs">{cards}</ul></section>
+<section class="wrap section cv" style="padding-top:0">
+  <div class="s-head"><p class="label">{ico("clock")} Timing</p><h2 class="h-l split-words">The deadline sets the price.</h2></div>
+  <ul class="tmg">{thtml}</ul>
+  <ul class="svc-notes">
+    <li>{ico("check")} <span>Prices are in Indian rupees (₹).</span></li>
+    <li>{ico("check")} <span>Single-price services with ASAP or 2–4 weeks: order and pay at once.</span></li>
+    <li>{ico("check")} <span>Everything else: send a request, I reply with the final price, and you pay only after that.</span></li>
+    <li>{ico("check")} <span>Big projects can be paid in parts: an advance, then milestones.</span></li>
+  </ul>
+</section>
 <section class="wrap section cv" style="padding-top:0">
   <div class="s-head"><p class="label">{ico("layers")} How it works</p><h2 class="h-l split-words">Four steps. No surprises.</h2></div>
   <div class="steps">{shtml}</div>
@@ -838,23 +924,26 @@ def build_services():
   </ul>
 </section>
 ''' + epilogue("", "Let’s make something <em>worth watching</em>.")
-    page("services.html", "Services", "Hire THE AAMIR SHEIKH for video editing, motion graphics, Blender 3D, design, web, games and robotics. Chapter VI.", body)
+    page("services.html", "Services", "Prices and ordering: video editing, motion graphics, Blender 3D, design, web, games, simulation and robotics by THE AAMIR SHEIKH. Chapter VI.", body,
+         scripts=("catalog.js",), extra=order_sheet())
 
 # ================================================================= ORDER + FEEDBACK
 def build_order():
     groups = ""
-    for g, icon, items in SERVICES:
-        gid = re.sub(r"[^a-z0-9]+", "-", g.lower()).strip("-")
-        chips = "".join(f'<label class="chip"><input type="checkbox" name="svc" value="{esc(g)} → {esc(x)}" data-group="{gid}"><span>{esc(x)}</span></label>' for x in items)
-        groups += f'<fieldset class="og" data-group-box="{gid}"><legend>{ico(icon)} {g}</legend><div class="chips">{chips}</div></fieldset>'
+    items = CATD["items"]
+    for gid, gname, icon in CAT.GROUPS:
+        chips = "".join(f'<label class="chip"><input type="checkbox" name="svc" value="{esc(gname)} → {esc(items[i]["name"])}" data-id="{i}" data-group="{gid}"><span>{esc(items[i]["name"])}</span></label>'
+                        for i in CATD["order"] if items[i]["g"] == gid)
+        groups += f'<fieldset class="og" data-group-box="{gid}"><legend>{ico(icon)} {esc(gname)}</legend><div class="chips">{chips}</div></fieldset>'
     likes = "".join(f'<label class="chip chip--img"><input type="checkbox" name="like" value="{esc(c[1])}" data-slug="{c[0]}"><span><img src="{M}{c[0]}.webp" alt="" loading="lazy" width="160" height="90">{esc(c[1])}</span></label>' for c in CLIPS + CLIPS2)
     budget = "".join(f'<label class="chip"><input type="radio" name="budget" value="{b}"><span>{b}</span></label>' for b in ["Under ₹2k", "₹2k–5k", "₹5k–15k", "₹15k+", "Let’s talk"])
     when = "".join(f'<label class="chip"><input type="radio" name="when" value="{b}"><span>{b}</span></label>' for b in ["ASAP", "1 week", "2–4 weeks", "Flexible"])
     stars = "".join(f'<label class="star"><input type="radio" name="rating" value="{n}"><span aria-hidden="true">{ico("star")}</span><span class="sr">{n} star{"s" if n > 1 else ""}</span></label>' for n in range(1, 6))
     fb_like = "".join(f'<label class="chip"><input type="checkbox" name="liked" value="{b}"><span>{b}</span></label>' for b in ["Design", "Videos", "Music", "Interfaces", "Accessibility", "Speed", "Story"])
+    acct_btn = '\n  <button type="submit" class="btn" data-send="account">' + ico("user-round") + ' Send to my account</button>'
     send_btns = lambda kind: f'''<div class="send-row">
   <button type="submit" class="btn btn--solid" data-send="whatsapp">{ico("message-circle")} Send on WhatsApp</button>
-  <button type="submit" class="btn" data-send="email">{ico("mail")} Send to Gmail</button>
+  <button type="submit" class="btn" data-send="email">{ico("mail")} Send to Gmail</button>{acct_btn if kind == "order" else ""}
 </div>
 <p class="form-status" role="status" aria-live="polite"></p>'''
     body = page_head("VII", "Order &amp; feedback", "Pick it. <em>Send it.</em>", "Tap what you want. It arrives on my WhatsApp and Gmail, neatly formatted.", "shopping-bag")
@@ -900,8 +989,9 @@ def build_order():
     {send_btns("feedback")}
   </form>
   <p class="mini muted mt-m">WhatsApp opens with your message ready — just press send. Gmail sends straight from this page.</p>
+  <p class="mini muted">“Send to my account” saves the order to your account, so I can send you a price and a pay link.</p>
 </section>''' + chapter_nav("order.html", "")
-    page("order.html", "Order & Feedback", "Order video edits, motion graphics, 3D, design, web, games or robotics from THE AAMIR SHEIKH — or leave feedback. Sent to WhatsApp and Gmail.", body)
+    page("order.html", "Order & Feedback", "Order video edits, motion graphics, 3D, design, web, games or robotics from THE AAMIR SHEIKH — or leave feedback. Sent to WhatsApp and Gmail.", body, scripts=("catalog.js",))
 
 # ================================================================= CREDITS
 CREDITS_MUSIC = [
@@ -977,8 +1067,20 @@ def build_account():
       <button type="button" class="btn" data-signout>Sign out</button>
     </div>
   </div>
+
+  <div class="acct-card ao" data-view="order" hidden>
+    <a class="link mini ao-back" href="account.html" data-o-back>{ico("arrow-right", "flip")} All orders</a>
+    <div class="ao-head"><p class="label" data-o-ref data-no-i18n></p><span class="o-s" data-o-status data-no-i18n></span></div>
+    <h2 class="h-m ao-name" data-o-name data-no-i18n></h2>
+    <dl class="ao-dl" data-o-facts data-no-i18n></dl>
+    <div class="summary ao-pay" data-o-pay hidden><p class="label">{ico("credit-card")} Amount due now</p><p class="os-total" data-o-due data-no-i18n></p><p class="mini muted">UPI payment opens here soon.</p></div>
+    <div data-o-plan-box hidden><p class="label">{ico("layers")} Payment plan</p><ul class="acct-list ao-plan" data-o-plan data-no-i18n></ul></div>
+    <p class="ao-state" data-o-state data-no-i18n></p>
+    <div data-o-brief-box hidden><p class="label">{ico("square-pen")} Your brief</p><p class="ao-brief" data-o-brief data-no-i18n dir="auto"></p></div>
+    <div class="m-links"><button type="button" class="btn btn--ghost btn--small" data-o-cancel hidden><span data-o-cancel-t data-no-i18n>Cancel this order</span></button></div>
+  </div>
 </section>'''
-    page("account.html", "Account", "Sign in to THE AAMIR SHEIKH to place orders and see them in one place.", body, current="account.html", noindex=True)
+    page("account.html", "Account", "Sign in to THE AAMIR SHEIKH to place orders and see them in one place.", body, current="account.html", noindex=True, scripts=("catalog.js",))
 
 # ================================================================= ADMIN (owner only)
 def build_admin():
@@ -1004,7 +1106,41 @@ def build_admin():
     <p class="muted" data-adm-empty hidden></p>
   </div>
 </section>'''
-    page("admin.html", "Admin", "Owner-only admin page.", body, current="admin.html", noindex=True)
+    drawer = f'''<div class="panel-wrap adm-drawer" id="adm-order" role="dialog" aria-modal="true" aria-labelledby="ad-h" aria-hidden="true" data-adm-order>
+  <div class="panel-card">
+    <div class="panel-top"><h2 id="ad-h" data-ad-ref data-no-i18n>Order</h2><button type="button" class="pill icon-pill" data-ad-close aria-label="Close">{ico("x")}</button></div>
+    <p class="form-status acct-status" role="status" aria-live="polite" data-ad-status></p>
+    <div class="ad-body" data-ad-body hidden>
+      <section><p class="label">{ico("shopping-bag")} <span data-ad-st data-no-i18n></span></p><p class="h-m ao-name" data-ad-name data-no-i18n></p><dl class="ao-dl" data-ad-facts data-no-i18n></dl></section>
+      <section><p class="label">{ico("user-round")} Customer</p><p class="ad-cust" data-ad-cust data-no-i18n></p></section>
+      <section><p class="label">{ico("square-pen")} Brief</p><p class="ao-brief" data-ad-brief data-no-i18n dir="auto"></p></section>
+      <section class="ad-price" data-ad-price hidden>
+        <h3 class="label">{ico("credit-card")} Set the price</h3>
+        <div class="ad-quick" data-ad-quick data-no-i18n></div>
+        <label class="fld"><span>Price (₹)</span><input type="number" min="0" step="1" inputmode="numeric" dir="ltr" data-ad-total></label>
+        <p class="mini">Split it into parts</p>
+        <div class="ad-quick" data-ad-splits>
+          <button type="button" class="btn btn--small" data-split="100">One payment</button>
+          <button type="button" class="btn btn--small" data-split="50,50">50 / 50</button>
+          <button type="button" class="btn btn--small" data-split="30,40,30">30 / 40 / 30</button>
+          <button type="button" class="btn btn--small" data-split="lakh">Up to ₹1 lakh each</button>
+        </div>
+        <ol class="ad-parts" data-ad-parts></ol>
+        <p class="mini" data-ad-sum data-no-i18n></p>
+        <p class="mini ad-warn" data-ad-warn hidden>UPI apps usually allow about ₹1 lakh a day. Keep each part at or under that.</p>
+        <button type="button" class="btn btn--solid" data-ad-send><span data-ad-send-t data-no-i18n>Send the price</span></button>
+      </section>
+      <section data-ad-plan-box hidden><p class="label">{ico("layers")} Payment plan</p><ul class="acct-list ao-plan" data-ad-plan data-no-i18n></ul>
+        <button type="button" class="btn btn--small" data-ad-next hidden>Ask for the next part</button></section>
+      <section data-ad-moves hidden><p class="label">{ico("sliders-horizontal")} Status</p><div class="m-links" data-ad-move-btns data-no-i18n></div></section>
+      <section><label class="fld"><span>Private note</span><textarea rows="3" maxlength="2000" data-ad-note></textarea></label>
+        <p class="mini muted">Only you see this note.</p><button type="button" class="btn btn--small" data-ad-save-note>Save note</button></section>
+      <section><p class="label">{ico("clock")} History</p><ul class="ad-hist" data-ad-hist data-no-i18n></ul></section>
+    </div>
+  </div>
+</div>
+'''
+    page("admin.html", "Admin", "Owner-only admin page.", body, current="admin.html", noindex=True, scripts=("catalog.js",), extra=drawer)
 
 # ================================================================= 404
 # ---------------------------------------------------------------- lighthouse game (404 + play.html)
@@ -1118,8 +1254,8 @@ def write_i18n():
     if miss2: print("WARNING missing zh/ko:", miss2[:10])
     for i, code in enumerate(("zh", "ko")):
         data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
-    import i18n_p0, i18n_acct, i18n_admin   # v3.4, account/sign-in and admin strings, all 8 languages in one row
-    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P:
+    import i18n_p0, i18n_acct, i18n_admin, i18n_shop   # v3.4, account/sign-in, admin and shop (v3.8) strings, all 8 languages in one row
+    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P + i18n_shop.P:
         assert len(row) == 9, row[0]
         for code, val in zip(("de", "fr", "ja", "es", "ru", "ar", "zh", "ko"), row[1:]):
             data[code][row[0]] = val
@@ -1128,5 +1264,5 @@ def write_i18n():
     print("wrote assets/js/i18n.js", sum(len(v) for v in data.values()), "strings")
 
 if __name__ == "__main__":
-    import sys; sys.path.insert(0, os.path.join(ROOT, "_build")); write_i18n()
+    write_i18n(); write_catalog()
     build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_account(); build_admin(); build_404(); write_sitemap()

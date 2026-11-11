@@ -55,9 +55,10 @@ export function cleanEmail(v) {
 
 export const cleanLang = (v) => (LANGS.includes(v) ? v : "en");
 
-/* Only paths on this site, so a sign-in link can never bounce someone to another website. */
+/* Only paths on this site, so a sign-in link can never bounce someone to another website.
+   A short query is allowed (letters, digits, ? = &) so a visitor can come back to the service they picked. */
 export function cleanNext(v) {
-  return typeof v === "string" && /^\/[A-Za-z0-9_\-./]{0,120}$/.test(v) && !v.includes("//") && !v.startsWith("/api/") ? v : "/account.html";
+  return typeof v === "string" && /^\/[A-Za-z0-9_\-./?=&]{0,160}$/.test(v) && !v.includes("//") && !v.startsWith("/api/") ? v : "/account.html";
 }
 
 /* What we note about a request: a keyed hash of the IP (never the IP itself), the country and the browser name. */
