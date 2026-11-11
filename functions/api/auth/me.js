@@ -1,0 +1,27 @@
+/* GET /api/auth/me — who is signed in (if anyone) and which sign-in methods are switched on. */
+import { json, cookies } from "../../_lib/http.js";
+import { config, getSession, publicUser, clearSessionCookies, SESSION_COOKIE, HINT_COOKIE } from "../../_lib/auth.js";
+
+export async function onRequestGet({ request, env }) {
+  const c = config(env);
+  const out = {
+    ok: true,
+    user: null,
+    signin: { google: c.google, email: c.email, turnstile_site_key: c.email ? env.TURNSTILE_SITE_KEY : null },
+  };
+  const res = (extra) => {
+    const r = json(out);
+    for (const v of extra || []) r.headers.append("Set-Cookie", v);
+    return r;
+  };
+  if (!c.db || !c.secret) return res();
+
+  const session = await getSession(request, env);
+  if (session) {
+    out.user = publicUser(session.user);
+    return res();
+  }
+  // A leftover cookie from an ended session: clear it so the header button stops saying "Account".
+  const jar = cookies(request);
+  return res(jar[SESSION_COOKIE] || jar[HINT_COOKIE] ? clearSessionCookies() : []);
+}

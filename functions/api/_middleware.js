@@ -24,7 +24,7 @@ export async function onRequest(context) {
     res = await context.next();
   } catch (err) {
     if (err instanceof HttpError) {
-      res = fail(err.status, err.code, err.message);
+      res = fail(err.status, err.code, err.message, err.extra);
     } else {
       console.error("api error", request.method, new URL(request.url).pathname, err && err.stack ? err.stack : err);
       res = fail(500, "server_error", "Something went wrong on our side.");

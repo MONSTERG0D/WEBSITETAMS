@@ -1075,3 +1075,47 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 :root[data-motion="reduce"] .fx-tilt { transform: none; } :root[data-motion="reduce"] .fx-glare, :root[data-motion="reduce"] .fx-ink { display: none; }
 @media (prefers-reduced-motion: reduce) { .fx-tilt { transform: none; } .fx-glare, .fx-ink { display: none; } }
 :root[data-cvd="contrast"] .fx-glare { display: none; }
+
+/* =====================================================================
+   v3.6 — account + sign-in
+   ===================================================================== */
+/* header button: icon + word on wide screens, icon only below 1280px, and on phones it moves
+   into the Menu and the footer because the header has no room left */
+.acct-btn { gap: 6px; }
+.acct-btn .i { width: 18px; height: 18px; }
+.acct-btn.on { border-color: var(--accent); color: var(--accent); }
+.acct-btn[aria-current="page"], .acct-btn.on:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+@media (max-width: 1279px) { .acct-btn { width: 40px; padding: 0; } .acct-btn .acct-t { display: none; } }
+@media (max-width: 1279px) and (pointer: coarse) { .acct-btn { width: 44px; } }
+@media (max-width: 599px) { .head-r .acct-btn { display: none; } }
+
+.acct { display: grid; gap: 16px; justify-items: start; }
+.acct [hidden] { display: none !important; }
+.acct-card { width: min(100%, 520px); display: grid; gap: 18px; padding: clamp(20px, 3vw, 32px); background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); }
+[data-ui="noir"] .acct-card { border-radius: 20px; }
+.acct-status { width: min(100%, 520px); scroll-margin-top: 84px; }
+.acct-status:empty { display: none; }
+.acct-form { display: grid; gap: 14px; }
+.acct-form > .btn, .acct .g-btn { width: 100%; }
+/* Google's own button colours, on every interface */
+.acct .g-btn { background: #fff; color: #1f1f1f; border-color: #747775; font-family: var(--f-body); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.acct .g-btn:hover { background: #f2f2f2; }
+.g-logo { width: 20px; height: 20px; flex: none; }
+.acct-or { display: flex; align-items: center; gap: 12px; width: 100%; }
+.acct-or::before, .acct-or::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+.acct-ts { min-height: 65px; max-width: 100%; overflow: hidden; }
+.acct-form input[name="code"] { font-family: var(--f-mono); font-size: 1.5rem; letter-spacing: .35em; text-align: center; }
+.acct-name { overflow-wrap: anywhere; margin-top: 6px; }
+.acct-mail { overflow-wrap: anywhere; }
+.acct-list { display: grid; gap: 8px; margin-top: 12px; }
+.acct-list:empty { display: none; }
+.acct-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: baseline; padding: 12px 14px; border: 1px solid var(--rule); border-radius: calc(var(--radius) / 2); background: var(--bg); }
+[data-ui="noir"] .acct-list li { border-radius: 12px; }
+.acct-list .o-ref { grid-column: 1 / -1; font-family: var(--f-mono); font-size: var(--t-xs); letter-spacing: .06em; color: var(--fg-2); }
+.acct-list .o-t { font-weight: 600; overflow-wrap: anywhere; }
+.acct-list .o-s { justify-self: end; font-family: var(--f-mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+.acct-list .o-s[data-s="paid"], .acct-list .o-s[data-s="delivered"] { color: var(--accent-2); }
+.acct-list .o-s[data-s="cancelled"], .acct-list .o-s[data-s="refunded"] { color: var(--fg-3); }
+.acct-list .o-d { font-size: .85rem; color: var(--fg-2); }
+.acct-list .o-a { justify-self: end; font-weight: 600; }
+:root[lang="ar"] .acct-list .o-s { letter-spacing: 0; }

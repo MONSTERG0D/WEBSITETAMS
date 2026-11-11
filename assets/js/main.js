@@ -996,6 +996,164 @@
     });
   })();
 
+  /* ===================================================== account + sign-in (v3.6) */
+  (function account() {
+    /* header, menu and footer links say "Account" while signed in. The tas_in cookie is only a hint
+       for this label; the real session cookie cannot be read by scripts. */
+    var links = $$("[data-acct-link]");
+    function paint(on) {
+      var s = T(on ? "Account" : "Sign in");
+      links.forEach(function (a) { var t = $(".acct-t", a); if (t) t.textContent = s; a.setAttribute("aria-label", s); a.classList.toggle("on", !!on); });
+    }
+    paint(/(?:^|;\s*)tas_in=1(?:;|$)/.test(doc.cookie));
+
+    var box = $("[data-acct]"); if (!box) return;
+    var status = $("[data-acct-status]", box), views = $$("[data-view]", box);
+    var fEmail = $("[data-email-form]", box), fCode = $("[data-code-form]", box), gBtn = $("[data-google]", box), orEl = $("[data-or]", box);
+    var q = new URLSearchParams(location.search), next = q.get("next") || "";
+    if (!/^\/[A-Za-z0-9_\-.\/]{0,120}$/.test(next) || next.indexOf("//") >= 0) next = "";   // only pages on this site
+    var cfg = { google: false, email: false }, email = "", tsToken = "", tsId = null, busy = false;
+    var GEN = "Something went wrong. Please try again.";
+    var MSG = {
+      bad_email: "Please enter a valid email address.",
+      turnstile_missing: "Please complete the check above first.",
+      turnstile_failed: "The check failed. Please try again.",
+      rate_limited: "Too many requests. Please wait a few minutes and try again.",
+      email_failed: "Couldn’t send the email. Please try again in a minute.",
+      code_invalid: "That code is wrong or has expired.",
+      too_many_attempts: "Too many tries. Please ask for a new code.",
+      account_blocked: "This account is blocked. Write to me if you think that is a mistake.",
+      google_cancelled: "Google sign-in didn’t finish. Please try again.",
+      google_failed: "Google sign-in didn’t finish. Please try again.",
+      google_state: "Google sign-in didn’t finish. Please try again.",
+      not_configured: "Sign-in is not switched on yet. Please come back soon.",
+      network: "You seem to be offline. Please try again."
+    };
+    var ST = { requested: "Requested", pending: "Waiting for payment", paid: "Paid", in_progress: "Being made", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" };
+
+    function note(text, cls) {
+      status.className = "form-status acct-status" + (cls ? " " + cls : ""); status.textContent = text || "";
+      if (text && status.scrollIntoView) { try { status.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" }); } catch (e) {} }   // keep the message in view on small screens
+    }
+    function fail(j) {
+      var c = j && j.error && j.error.code;
+      if (c === "rate_limited" && j.retry_after > 0 && j.retry_after <= 60) return note(T("Please wait {n} seconds before asking for another code.").replace("{n}", j.retry_after), "err");
+      note(T(MSG[c] || GEN), "err");
+    }
+    function show(name) { views.forEach(function (v) { v.hidden = v.getAttribute("data-view") !== name; }); }
+    function lock(form, on) { busy = on; form.setAttribute("aria-busy", on ? "true" : "false"); $$("button", form).forEach(function (b) { b.disabled = on; }); }
+    function call(path, body) {
+      var o = { credentials: "same-origin", headers: { "Accept": "application/json" } };
+      if (body) { o.method = "POST"; o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); }
+      return fetch("/api/" + path, o).then(function (r) {
+        return r.json().then(function (j) { return j && typeof j === "object" ? j : { ok: false }; }, function () { return { ok: false, error: { code: "server_error" } }; });
+      }, function () { return { ok: false, error: { code: "network" } }; });
+    }
+
+    /* Cloudflare Turnstile: the "are you human" check in front of the email form */
+    function loadTs(key) {
+      var host = $("[data-ts]", box); if (!host || !key) return;
+      var draw = function () {
+        if (!window.turnstile || tsId !== null) return;
+        tsId = window.turnstile.render(host, {
+          sitekey: key, theme: S.ui === "village" ? "light" : "dark", language: S.lang === "zh" ? "zh-cn" : S.lang, size: window.innerWidth < 350 ? "compact" : "flexible",
+          callback: function (t) { tsToken = t; }, "expired-callback": function () { tsToken = ""; }, "error-callback": function () { tsToken = ""; }
+        });
+      };
+      if (window.turnstile) return draw();
+      window.tasTs = draw;
+      var sc = doc.createElement("script"); sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=tasTs"; sc.async = true; doc.head.appendChild(sc);
+    }
+    function resetTs() { tsToken = ""; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (e) {} } }
+
+    function money(minor, cur) {
+      try { return new Intl.NumberFormat(S.lang, { style: "currency", currency: cur || "INR", maximumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100); }
+      catch (e) { return (cur || "INR") + " " + (minor / 100); }
+    }
+    function day(ts) { try { return new Date(ts * 1000).toLocaleDateString(S.lang, { year: "numeric", month: "short", day: "numeric" }); } catch (e) { return ""; } }
+    function loadOrders() {
+      var ul = $("[data-orders]", box), none = $("[data-orders-none]", box);
+      call("account/orders").then(function (j) {
+        ul.textContent = "";
+        if (!j.ok || !j.orders) { none.textContent = T("Couldn’t load your orders."); none.hidden = false; return; }
+        none.textContent = T("No orders yet."); none.hidden = j.orders.length > 0;
+        j.orders.forEach(function (o) {
+          var li = doc.createElement("li");
+          [["o-ref", o.ref], ["o-t", o.title], ["o-s", T(ST[o.status] || o.status)], ["o-d", day(o.created_at)], ["o-a", o.amount_minor == null ? "" : money(o.amount_minor, o.currency)]].forEach(function (c) {
+            var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", o.status); li.appendChild(s);
+          });
+          ul.appendChild(li);
+        });
+      });
+    }
+
+    function emailStep() {
+      fCode.hidden = true; fEmail.hidden = !cfg.email; gBtn.hidden = !cfg.google; orEl.hidden = !(cfg.google && cfg.email);
+    }
+    function signedOut() {
+      paint(false);
+      if (!cfg.google && !cfg.email) return show("off");
+      gBtn.href = "/api/auth/google/start?lang=" + S.lang + (next ? "&next=" + encodeURIComponent(next) : "");
+      emailStep();
+      if (cfg.email) loadTs(cfg.turnstile_site_key);
+      show("out");
+    }
+    function signedIn(user) {
+      paint(true);
+      if (next) { location.replace(next); return; }   // they came here from another page: send them back
+      $("[data-user-name]", box).textContent = user.name || user.email;
+      var m = $("[data-user-email]", box); m.textContent = user.email; m.hidden = !user.name;
+      show("in"); loadOrders();
+    }
+    function boot() {
+      call("auth/me").then(function (j) {
+        if (!j.ok || !j.signin) { show("off"); if (j.error && j.error.code === "network") note(T(MSG.network), "err"); return; }
+        cfg = j.signin;
+        if (j.user) signedIn(j.user); else signedOut();
+      });
+    }
+
+    fEmail.addEventListener("submit", function (e) {
+      e.preventDefault(); if (busy) return;
+      var inp = $('[name="email"]', fEmail), v = inp.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { inp.setAttribute("aria-invalid", "true"); inp.focus(); return note(T(MSG.bad_email), "err"); }
+      inp.setAttribute("aria-invalid", "false");
+      if (!tsToken) return note(T(MSG.turnstile_missing), "err");
+      lock(fEmail, true); note(T("Sending your code…"));
+      call("auth/email/start", { email: v, turnstile: tsToken, lang: S.lang }).then(function (j) {
+        lock(fEmail, false); resetTs();
+        if (!j.ok) return fail(j);
+        email = v; fEmail.hidden = true; gBtn.hidden = true; orEl.hidden = true; fCode.hidden = false;
+        note(T("Code sent to {email}. Check your inbox, and the spam folder too.").replace("{email}", v), "ok");
+        var c = $('[name="code"]', fCode); c.value = ""; c.focus(); sfx("switch");
+      });
+    });
+    fCode.addEventListener("submit", function (e) {
+      e.preventDefault(); if (busy) return;
+      var c = $('[name="code"]', fCode), v = c.value.replace(/\D/g, "");
+      if (v.length !== 6) { c.setAttribute("aria-invalid", "true"); c.focus(); return note(T(MSG.code_invalid), "err"); }
+      c.setAttribute("aria-invalid", "false");
+      lock(fCode, true); note(T("Signing you in…"));
+      call("auth/email/verify", { email: email, code: v, lang: S.lang }).then(function (j) {
+        lock(fCode, false);
+        if (!j.ok) { fail(j); if (j.error && j.error.code === "too_many_attempts") emailStep(); else c.select(); return; }
+        note(T("You are signed in. ✅"), "ok"); sfx("switch"); signedIn(j.user);
+      });
+    });
+    $("[data-code-back]", box).addEventListener("click", function () { note(""); emailStep(); var i = $('[name="email"]', fEmail); if (i) i.focus(); });
+    $("[data-signout]", box).addEventListener("click", function () {
+      var b = this; b.disabled = true;
+      call("auth/logout", {}).then(function () { b.disabled = false; note(T("You are signed out."), "ok"); boot(); });
+    });
+
+    var err = q.get("error");
+    if (err) {
+      note(T(MSG[err] || GEN), "err");
+      try { history.replaceState(null, "", location.pathname + (next ? "?next=" + encodeURIComponent(next) : "")); } catch (e) {}
+    }
+    boot();
+  })();
+
   /* ===================================================== boot */
   applyVisual(); syncMusicUI();
 })();

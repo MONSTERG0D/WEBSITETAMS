@@ -192,6 +192,7 @@ def head(title, desc, path, p):
 
 def header(current, p):
     links = [f'<a href="{p}{f}"{nav_current(f, current)}>{label}</a>' for f, label in PRIMARY]
+    acct_cur = ' aria-current="page"' if current == "account.html" else ""
     return f'''<a class="skip" href="#main">Skip to content</a>
 <div class="fx-tex" aria-hidden="true"></div>
 <header class="site-head">
@@ -215,6 +216,7 @@ def header(current, p):
       </div>
       <button class="pill icon-pill music-btn" type="button" data-music-toggle aria-pressed="false" aria-label="Play music">{ico("play", "i-play")}{ico("pause", "i-pause")}<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
       <button class="pill icon-pill" type="button" data-panel-open aria-controls="panel" aria-expanded="false" aria-label="Open settings: interface, music, sound and accessibility">{ico("sliders-horizontal")}</button>
+      <a class="pill acct-btn" href="{p}account.html" data-acct-link{acct_cur}>{ico("user-round")}<span class="acct-t">Sign in</span></a>
       <button class="pill menu-btn" type="button" aria-controls="pause" aria-expanded="false">{ico("menu")}<span class="menu-t">Menu</span> <kbd>Esc</kbd></button>
     </div>
   </div>
@@ -285,6 +287,7 @@ def pause_menu(current, p):
         items.append(f'<li><a href="{p}{f}"{nav_current(f, current) if f != "purpose.html" else (" aria-current=true" if primary_of(current) == f else "")}><span class="num">0{i + 1}</span>{label}</a>{sub}</li>')
     items.append(f'<li><a href="{p}90-day-progress/"><span class="num">↗</span>90 Day Progress</a></li>')
     items.append(f'<li><a href="{p}play.html"{" aria-current=page" if current == "play.html" else ""}><span class="num">✦</span>Lighthouse game</a></li>')
+    items.append(f'<li><a href="{p}account.html" data-acct-link{" aria-current=page" if current == "account.html" else ""}><span class="num">☺</span><span class="acct-t">Sign in</span></a></li>')
     items.append('<li><button type="button" data-panel-open><span class="num">⚙</span>Settings</button></li>')
     return f'''<div class="pause" id="pause" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
   <div class="pause-card">
@@ -332,7 +335,7 @@ def footer(p):
         </div>
       </div>
       <div class="col"><p class="label">Chapters</p><ul class="mt-s foot-list">{pages}</ul></div>
-      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}play.html">{ico("lighthouse")} Lighthouse game</a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
+      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}play.html">{ico("lighthouse")} Lighthouse game</a></li><li><a href="{p}account.html" data-acct-link>{ico("user-round")} <span class="acct-t">Sign in</span></a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
     </div>
     <div class="foot-base label">
       <span>© <span data-year>2026</span> {BRAND}</span>
@@ -369,13 +372,14 @@ def about_nav(current, p):
     links = "".join(f'<a href="{p}{c[0]}"{cur(c[0])}>{ico(c[5])}<span>{c[3]}</span></a>' for c in CHAPTERS if c[0] in ABOUT)
     return f'<nav class="subnav wrap" aria-label="About"><span class="label subnav-k">{ico("user-round")} About</span><div class="subnav-l">{links}</div></nav>\n'
 
-def page(path, title, desc, body, current=None, depth=0, home=False):
+def page(path, title, desc, body, current=None, depth=0, home=False, noindex=False):
     p = "../" * depth
     cls = ' class="home"' if home else ""
     if primary_of(current or path) == "purpose.html": body = about_nav(current or path, p) + body
     doc = (head(title, desc, path, p) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p)
            + settings_panel() + attract(p) + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + "</body>\n</html>\n")
     doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
+    if noindex: doc = doc.replace("<title>", '<meta name="robots" content="noindex">\n<title>', 1)
     out = os.path.join(ROOT, path)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as f: f.write(doc)
@@ -920,6 +924,61 @@ def build_credits():
 </section>'''
     page("credits.html", "Credits", "Music, photo, icon and font credits for theaamirsheikh.com.", body, current="credits.html")
 
+# ================================================================= ACCOUNT + SIGN-IN
+# Google's "G" mark, unaltered, as its sign-in branding guidelines require.
+G_LOGO = ('<svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true" focusable="false">'
+          '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
+          '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
+          '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>'
+          '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>')
+
+def build_account():
+    """Sign in (Google or a code by email) and, once signed in, the visitor's own orders.
+    The page is one shell with four views; main.js shows the right one after asking /api/auth/me."""
+    body = page_head("✦", "Account", "Your <em>account.</em>", "Sign in to order, and to see your orders in one place.", "user-round")
+    body += f'''<section class="wrap acct" data-acct style="padding-bottom:clamp(48px,8vw,120px)">
+  <noscript><p class="lead">Sign-in needs JavaScript.</p></noscript>
+  <p class="form-status acct-status" role="status" aria-live="polite" data-acct-status></p>
+
+  <div class="acct-card" data-view="wait"><p class="label">{ico("clock")} Checking…</p></div>
+
+  <div class="acct-card" data-view="off" hidden><p>Sign-in is not switched on yet. Please come back soon.</p></div>
+
+  <div class="acct-card" data-view="out" hidden>
+    <a class="btn g-btn" href="/api/auth/google/start" data-google hidden>{G_LOGO}<span>Continue with Google</span></a>
+    <p class="label acct-or" data-or hidden><span>or</span></p>
+    <form class="acct-form" data-email-form novalidate hidden>
+      <label class="fld"><span>Your email</span><input type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" dir="ltr" required></label>
+      <div class="acct-ts" data-ts></div>
+      <button type="submit" class="btn btn--solid">{ico("mail")} Email me a code</button>
+      <p class="mini muted">No password. I email you a 6-digit code that works for 10 minutes.</p>
+    </form>
+    <form class="acct-form" data-code-form novalidate hidden>
+      <label class="fld"><span>Enter the 6-digit code</span><input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" dir="ltr" required></label>
+      <button type="submit" class="btn btn--solid">{ico("check")} Sign in</button>
+      <button type="button" class="btn btn--ghost btn--small" data-code-back>Use a different email or send a new code</button>
+    </form>
+  </div>
+
+  <div class="acct-card" data-view="in" hidden>
+    <div>
+      <p class="label">{ico("user-round")} Signed in as</p>
+      <p class="h-m acct-name" data-user-name data-no-i18n></p>
+      <p class="muted acct-mail" data-user-email data-no-i18n hidden></p>
+    </div>
+    <div>
+      <p class="label">{ico("shopping-bag")} Your orders</p>
+      <ul class="acct-list" data-orders data-no-i18n></ul>
+      <p class="muted mt-s" data-orders-none hidden>No orders yet.</p>
+    </div>
+    <div class="m-links">
+      <a class="btn btn--solid" href="order.html">{ico("shopping-bag")} Place an order</a>
+      <button type="button" class="btn" data-signout>Sign out</button>
+    </div>
+  </div>
+</section>'''
+    page("account.html", "Account", "Sign in to THE AAMIR SHEIKH to place orders and see them in one place.", body, current="account.html", noindex=True)
+
 # ================================================================= 404
 # ---------------------------------------------------------------- lighthouse game (404 + play.html)
 LH_WORKS = [
@@ -1032,8 +1091,8 @@ def write_i18n():
     if miss2: print("WARNING missing zh/ko:", miss2[:10])
     for i, code in enumerate(("zh", "ko")):
         data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
-    import i18n_p0   # v3.4 strings, all 8 languages in one row
-    for row in i18n_p0.P:
+    import i18n_p0, i18n_acct   # v3.4 strings and account/sign-in strings, all 8 languages in one row
+    for row in i18n_p0.P + i18n_acct.P:
         assert len(row) == 9, row[0]
         for code, val in zip(("de", "fr", "ja", "es", "ru", "ar", "zh", "ko"), row[1:]):
             data[code][row[0]] = val
@@ -1043,4 +1102,4 @@ def write_i18n():
 
 if __name__ == "__main__":
     import sys; sys.path.insert(0, os.path.join(ROOT, "_build")); write_i18n()
-    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_404(); write_sitemap()
+    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_account(); build_404(); write_sitemap()
