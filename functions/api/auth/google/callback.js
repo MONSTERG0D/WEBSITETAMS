@@ -9,6 +9,7 @@ import {
   findOrCreateUser, createSession, sessionCookies, tempCookie, OAUTH_COOKIE,
 } from "../../../_lib/auth.js";
 import { exchangeCode, verifyIdToken } from "../../../_lib/google.js";
+import { signupNotice } from "../../../_lib/mail.js";
 
 const dropCookie = tempCookie(OAUTH_COOKIE, "", 0);
 const back = (code) => redirect("/account.html?error=" + code, [dropCookie]);
@@ -36,7 +37,7 @@ export async function onRequestGet(context) {
   }
 }
 
-async function finish({ request, env }) {
+async function finish({ request, env, waitUntil }) {
   if (!config(env).google) return back("not_configured");
   const url = new URL(request.url);
   if (url.searchParams.get("error")) return back("google_cancelled");
@@ -71,5 +72,6 @@ async function finish({ request, env }) {
 
   const token = await createSession(env, found.user.id, "google");
   await logEvent(env, meta, { userId: found.user.id, email, method: "google", event: found.created ? "signup" : "login" });
+  if (found.created) waitUntil(signupNotice(env, found.user, "google", meta)); // tell the owner, without making the visitor wait
   return redirect(cleanNext(saved.next), [...sessionCookies(token), dropCookie]);
 }

@@ -2,7 +2,7 @@
 
 The backend runs on Cloudflare, next to the static site: Pages Functions for the API and a D1 database for the data. This file is the map. It holds no secrets; secrets live only in Cloudflare.
 
-Built so far: the foundation (step 1) and sign-in with the account page (step 2). The admin page, orders and UPI payments come in later steps.
+Built so far: the foundation (step 1), sign-in with the account page (step 2) and the owner-only admin page (step 3). Orders and UPI payments come in later steps.
 
 ## Where things are
 
@@ -18,6 +18,9 @@ Built so far: the foundation (step 1) and sign-in with the account page (step 2)
 | `functions/api/auth/logout.js` | `POST /api/auth/logout` — ends the session. |
 | `functions/api/account/orders.js` | `GET /api/account/orders` — the signed-in person's own orders. |
 | `functions/_lib/` | Shared helpers. Not routes. `auth.js` holds accounts, sessions, the sign-in history and the rate limits. |
+| `functions/api/admin/` | `users.js`, `orders.js`, `payments.js` — owner-only lists. `?q=` searches, `?format=csv` downloads a CSV. Read-only. |
+| `functions/_lib/admin.js` | Search, paging (200 rows on screen, 5000 per CSV) and safe CSV writing for the admin routes. |
+| `admin.html` | The admin page (built by `_build/build.py`; its script is the "admin page" part of `assets/js/main.js`). |
 | `account.html` | The account page (built by `_build/build.py`; its script is the "account + sign-in" part of `assets/js/main.js`). |
 | `_db/migrations/` | The database schema, one numbered file per change. |
 | `_db/setup/` | Two one-line files that label each database as live or preview. |
@@ -77,6 +80,13 @@ Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"ta
 - **One account per email address.** Someone who first used an email code and later uses Google with the same address lands in the same account.
 - Nothing is stored about a visitor's IP address except a keyed hash, used for the rate limits.
 
+## The admin page
+
+- Only the address in `ADMIN_EMAIL` gets in, and only after signing in with it (Google or email code). The setting lives in Cloudflare, not in the database, so no database row can make someone an admin. Everyone else gets "only for the site owner"; the server refuses them too, not just the page.
+- Shows users (name, email, how they signed in, status, order count, sign-up time, last login), orders and payments. There are no passwords to show; none exist.
+- Search covers email, name, order number, title, status and UPI reference. The CSV follows the search. A cell that a spreadsheet could run as a formula is prefixed with an apostrophe. Every export is written to `audit_log`.
+- On each new sign-up the owner gets an email at `NOTIFY_EMAIL` (default `ak4418561@gmail.com`). If that email fails, the visitor still signs in. New-order emails come with orders (step 4). The WhatsApp and Gmail order form is unchanged.
+
 ## Changing the schema later
 
 1. Add `_db/migrations/000N_name.sql`. It must be safe to run twice (`IF NOT EXISTS`) and end with `INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (N, 'name');`.
@@ -98,11 +108,13 @@ Entered by hand in Cloudflare (Settings → Variables and Secrets), for Producti
 | `TURNSTILE_SITE_KEY` | text | step 2 | Bot check on the email-code form: the public key. |
 | `TURNSTILE_SECRET_KEY` | secret | step 2 | Bot check: the private key. |
 | `EMAIL_API_KEY` | secret | step 2 | API key of the email service (Resend) that sends codes and notices. |
+| `ADMIN_EMAIL` | text | step 3 | The one address allowed into the admin page: the address you sign in with. |
+| `NOTIFY_EMAIL` | text | step 3 | Optional. Where sign-up and order notices go. Leave it out to use `ak4418561@gmail.com`. |
 | `MAIL_FROM` | text | step 2 | The sender, for example `THE AAMIR SHEIKH <login@theaamirsheikh.com>`. The domain must be verified at the email service. |
 | `ADMIN_EMAIL` | variable | step 3 | The one address allowed into the admin page. |
 | `UPI_ID`, `UPI_PAYEE_NAME` | variable | step 5 | Where UPI payments go. |
 
-Names for steps 3 to 5 are the plan; each step confirms its own.
+Names for steps 4 and 5 are the plan; each step confirms its own.
 
 Google sign-in switches on when `SESSION_SECRET` and both Google values are present. Email-code sign-in switches on when `SESSION_SECRET`, both Turnstile values, `EMAIL_API_KEY` and `MAIL_FROM` are present. Until then the account page says sign-in is not switched on yet, and the rest of the site is unaffected.
 

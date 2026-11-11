@@ -1119,3 +1119,41 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 .acct-list .o-d { font-size: .85rem; color: var(--fg-2); }
 .acct-list .o-a { justify-self: end; font-weight: 600; }
 :root[lang="ar"] .acct-list .o-s { letter-spacing: 0; }
+
+/* =====================================================================
+   v3.7 — admin page (owner only)
+   ===================================================================== */
+.adm { justify-items: stretch; }
+.adm .acct-card { justify-self: start; }
+.adm-in { display: grid; gap: 14px; min-width: 0; }
+.adm-tabs { margin-bottom: 0; justify-self: start; flex-wrap: wrap; }
+.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.adm-n { font-family: var(--f-mono); font-size: var(--t-xs); opacity: .75; }
+.adm-n:empty { display: none; }
+.adm-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.adm-q { position: relative; flex: 1 1 260px; max-width: 460px; }
+.adm-q .i { position: absolute; left: 14px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); color: var(--fg-2); pointer-events: none; }
+[dir="rtl"] .adm-q .i { left: auto; right: 14px; }
+.adm-q input { padding-inline-start: 42px; }
+.adm-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--panel); }
+[data-ui="noir"] .adm-scroll { border-radius: 16px; }
+.adm-scroll[hidden] { display: none; }
+.adm-t { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.adm-t th { position: sticky; top: 0; background: var(--panel-2); text-align: start; font-family: var(--f-mono); font-size: var(--t-xs); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-2); padding: 12px 14px; white-space: nowrap; }
+.adm-t td { padding: 11px 14px; border-top: 1px solid var(--rule); vertical-align: top; overflow-wrap: anywhere; text-align: start; }
+.adm-t tbody tr:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.adm-t .adm-st { font-family: var(--f-mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+.adm-t .adm-st[data-s="paid"], .adm-t .adm-st[data-s="delivered"], .adm-t .adm-st[data-s="confirmed"], .adm-t .adm-st[data-s="active"] { color: var(--accent-2); }
+.adm-t .adm-st[data-s="cancelled"], .adm-t .adm-st[data-s="refunded"], .adm-t .adm-st[data-s="rejected"], .adm-t .adm-st[data-s="failed"], .adm-t .adm-st[data-s="deleted"], .adm-t .adm-st[data-s="blocked"] { color: var(--fg-3); }
+:root[lang="ar"] .adm-t th, :root[lang="ar"] .adm-t .adm-st { letter-spacing: 0; }
+/* phones: each row becomes a small card, with the column name beside each value */
+@media (max-width: 700px) {
+  .adm-scroll { border: 0; background: none; overflow: visible; }
+  .adm-t thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .adm-t, .adm-t tbody, .adm-t tr, .adm-t td { display: block; width: 100%; }
+  .adm-t tr { margin-bottom: 10px; padding: 8px 14px; border: 1px solid var(--rule); border-radius: calc(var(--radius) / 2); background: var(--panel); }
+  [data-ui="noir"] .adm-t tr { border-radius: 12px; }
+  .adm-t td { display: grid; grid-template-columns: minmax(7.5em, 38%) 1fr; gap: 10px; padding: 6px 0; border: 0; }
+  .adm-t td::before { content: attr(data-label); font-family: var(--f-mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--fg-2); }
+  :root[lang="ar"] .adm-t td::before { letter-spacing: 0; }
+}

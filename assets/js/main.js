@@ -1098,8 +1098,9 @@
       if (cfg.email) loadTs(cfg.turnstile_site_key);
       show("out");
     }
-    function signedIn(user) {
+    function signedIn(user, admin) {
       paint(true);
+      var al = $("[data-admin-link]", box); if (al) al.hidden = !admin;
       if (next) { location.replace(next); return; }   // they came here from another page: send them back
       $("[data-user-name]", box).textContent = user.name || user.email;
       var m = $("[data-user-email]", box); m.textContent = user.email; m.hidden = !user.name;
@@ -1109,7 +1110,7 @@
       call("auth/me").then(function (j) {
         if (!j.ok || !j.signin) { show("off"); if (j.error && j.error.code === "network") note(T(MSG.network), "err"); return; }
         cfg = j.signin;
-        if (j.user) signedIn(j.user); else signedOut();
+        if (j.user) signedIn(j.user, j.admin); else signedOut();
       });
     }
 
@@ -1137,7 +1138,7 @@
       call("auth/email/verify", { email: email, code: v, lang: S.lang }).then(function (j) {
         lock(fCode, false);
         if (!j.ok) { fail(j); if (j.error && j.error.code === "too_many_attempts") emailStep(); else c.select(); return; }
-        note(T("You are signed in. ✅"), "ok"); sfx("switch"); signedIn(j.user);
+        note(T("You are signed in. ✅"), "ok"); sfx("switch"); boot();
       });
     });
     $("[data-code-back]", box).addEventListener("click", function () { note(""); emailStep(); var i = $('[name="email"]', fEmail); if (i) i.focus(); });
@@ -1152,6 +1153,83 @@
       try { history.replaceState(null, "", location.pathname + (next ? "?next=" + encodeURIComponent(next) : "")); } catch (e) {}
     }
     boot();
+  })();
+
+  /* ===================================================== admin page (v3.7, owner only) */
+  (function admin() {
+    var box = $("[data-adm]"); if (!box) return;
+    var status = $("[data-adm-status]", box), views = $$("[data-view]", box), q = $("[data-adm-q]", box), csv = $("[data-csv]", box);
+    var thead = $("thead tr", box), tbody = $("tbody", box), shown = $("[data-adm-shown]", box), empty = $("[data-adm-empty]", box), region = $("[data-adm-region]", box);
+    var tab = "users", timer = null, seq = 0;
+    function show(name) { views.forEach(function (v) { v.hidden = v.getAttribute("data-view") !== name; }); }
+    function note(t, cls) { status.className = "form-status acct-status" + (cls ? " " + cls : ""); status.textContent = t || ""; }
+    function day(ts) { if (!ts) return "—"; try { return new Date(ts * 1000).toLocaleString(S.lang, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) { return ""; } }
+    function money(minor, cur) {
+      if (minor === null || minor === undefined) return "—";
+      try { return new Intl.NumberFormat(S.lang, { style: "currency", currency: cur || "INR", maximumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100); } catch (e) { return (cur || "INR") + " " + (minor / 100); }
+    }
+    function who(r) { return r.name ? r.name + " · " + r.email : r.email; }
+    var ORDER_ST = { requested: "Requested", pending: "Waiting for payment", paid: "Paid", in_progress: "Being made", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" };
+    var PAY_ST = { created: "Started", submitted: "Waiting for check", confirmed: "Confirmed", rejected: "Rejected", failed: "Failed", refunded: "Refunded" };
+    var USER_ST = { active: "Active", blocked: "Blocked", deleted: "Deleted" };
+    var st = function (map) { return function (r) { return { text: T(map[r.status] || r.status), s: r.status }; }; };
+    var COLS = {
+      users: [["Name", function (r) { return r.name || "—"; }], ["Email", "email"],
+        ["Signed in with", function (r) { return (r.signup_method === "google" ? "Google" : T("Email code")) + (r.signup_method !== "google" && r.google === "yes" ? " + Google" : ""); }],
+        ["Status", st(USER_ST)], ["Orders", "orders"], ["Signed up", function (r) { return day(r.created_at); }], ["Last login", function (r) { return day(r.last_login_at); }]],
+      orders: [["Order no.", "ref"], ["Title", "title"], ["Customer", who], ["Status", st(ORDER_ST)], ["Amount", function (r) { return money(r.amount_minor, r.currency); }], ["Created", function (r) { return day(r.created_at); }]],
+      payments: [["Order no.", "ref"], ["UPI reference", function (r) { return r.reference || "—"; }], ["Customer", who], ["Status", st(PAY_ST)], ["Amount", function (r) { return money(r.amount_minor, r.currency); }], ["Created", function (r) { return day(r.created_at); }], ["Confirmed on", function (r) { return day(r.confirmed_at); }]]
+    };
+    function get(path) {
+      return fetch("/api/" + path, { credentials: "same-origin", headers: { "Accept": "application/json" } }).then(function (r) {
+        return r.json().then(function (j) { return j && typeof j === "object" ? j : { ok: false }; }, function () { return { ok: false }; });
+      }, function () { return { ok: false, error: { code: "network" } }; });
+    }
+    function url(kind, extra) { var v = q.value.trim(); return "admin/" + kind + "?" + (v ? "q=" + encodeURIComponent(v) + "&" : "") + (extra || ""); }
+    function draw(j, term) {
+      var cols = COLS[tab];
+      thead.textContent = ""; tbody.textContent = "";
+      cols.forEach(function (c) { var th = doc.createElement("th"); th.scope = "col"; th.textContent = T(c[0]); thead.appendChild(th); });
+      j.rows.forEach(function (r) {
+        var tr = doc.createElement("tr");
+        cols.forEach(function (c) {
+          var td = doc.createElement("td"), v = typeof c[1] === "function" ? c[1](r) : r[c[1]];
+          if (v && typeof v === "object") { td.textContent = v.text; td.setAttribute("data-s", v.s); td.className = "adm-st"; } else td.textContent = v === null || v === undefined || v === "" ? "—" : String(v);
+          if (td.className !== "adm-st") td.dir = "auto";   // emails, references and English titles keep their own direction in Arabic
+          td.setAttribute("data-label", T(c[0])); tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      shown.textContent = j.total ? T("Showing {n} of {t}").replace("{n}", j.shown).replace("{t}", j.total) : "";
+      empty.textContent = T(term ? "Nothing matches that search." : "Nothing here yet."); empty.hidden = j.rows.length > 0;
+      region.hidden = !j.rows.length;
+    }
+    function load() {
+      var my = ++seq, term = q.value.trim();
+      csv.href = "/api/" + url(tab, "format=csv");
+      region.setAttribute("aria-label", T(tab === "users" ? "Users" : tab === "orders" ? "Orders" : "Payments"));
+      return get(url(tab)).then(function (j) {
+        if (my !== seq) return;                       // a newer search already answered
+        if (!j.ok) { note(T("Couldn’t load this list."), "err"); return; }
+        note(""); draw(j, term);
+        if (!term) { var n = $('[data-count="' + tab + '"]', box); if (n) n.textContent = j.total; }
+      });
+    }
+    $$("[data-tab]", box).forEach(function (b) {
+      b.addEventListener("click", function () {
+        tab = b.getAttribute("data-tab");
+        $$("[data-tab]", box).forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        load();
+      });
+    });
+    q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(load, 250); });
+    q.addEventListener("keydown", function (e) { if (e.key === "Escape" && q.value) { e.stopPropagation(); q.value = ""; load(); } });
+    get("auth/me").then(function (j) {
+      if (!j.ok || !j.user) return show("out");
+      if (!j.admin) return show("no");
+      show("in"); load();
+      ["orders", "payments"].forEach(function (k) { get("admin/" + k).then(function (r) { var n = $('[data-count="' + k + '"]', box); if (n && r.ok) n.textContent = r.total; }); });
+    });
   })();
 
   /* ===================================================== boot */

@@ -973,11 +973,38 @@ def build_account():
     </div>
     <div class="m-links">
       <a class="btn btn--solid" href="order.html">{ico("shopping-bag")} Place an order</a>
+      <a class="btn" href="admin.html" data-admin-link hidden>{ico("lock")} Admin</a>
       <button type="button" class="btn" data-signout>Sign out</button>
     </div>
   </div>
 </section>'''
     page("account.html", "Account", "Sign in to THE AAMIR SHEIKH to place orders and see them in one place.", body, current="account.html", noindex=True)
+
+# ================================================================= ADMIN (owner only)
+def build_admin():
+    """Owner-only lists of users, orders and payments, with search and CSV export.
+    The HTML holds no data: main.js asks /api/admin/* and the server refuses anyone but ADMIN_EMAIL."""
+    tabs = "".join(f'<button type="button" data-tab="{k}" aria-pressed="{"true" if k == "users" else "false"}">{ico(i)} {t} <span class="adm-n" data-count="{k}"></span></button>'
+                   for k, i, t in [("users", "users", "Users"), ("orders", "shopping-bag", "Orders"), ("payments", "credit-card", "Payments")])
+    body = page_head("✦", "Admin", "The <em>back office.</em>", "Only you can see this page: everyone who signed up, every order and every payment.", "lock")
+    body += f'''<section class="wrap acct adm" data-adm style="padding-bottom:clamp(48px,8vw,120px)">
+  <noscript><p class="lead">This page needs JavaScript.</p></noscript>
+  <p class="form-status acct-status" role="status" aria-live="polite" data-adm-status></p>
+  <div class="acct-card" data-view="wait"><p class="label">{ico("clock")} Checking…</p></div>
+  <div class="acct-card" data-view="out" hidden><p>Sign in first.</p><a class="btn btn--solid" href="account.html?next=/admin.html">{ico("user-round")} Sign in</a></div>
+  <div class="acct-card" data-view="no" hidden><p>This page is only for the site owner.</p></div>
+  <div class="adm-in" data-view="in" hidden>
+    <div class="tabs adm-tabs">{tabs}</div>
+    <div class="adm-bar">
+      <label class="fld adm-q"><span class="sr">Search</span>{ico("search")}<input type="search" name="q" placeholder="Search" autocomplete="off" spellcheck="false" data-adm-q></label>
+      <a class="btn btn--small" href="/api/admin/users?format=csv" data-csv download>{ico("download")} Download CSV</a>
+    </div>
+    <p class="mini muted" data-adm-shown></p>
+    <div class="adm-scroll" tabindex="0" role="region" aria-label="Users" data-adm-region><table class="adm-t" data-no-i18n><thead><tr></tr></thead><tbody></tbody></table></div>
+    <p class="muted" data-adm-empty hidden></p>
+  </div>
+</section>'''
+    page("admin.html", "Admin", "Owner-only admin page.", body, current="admin.html", noindex=True)
 
 # ================================================================= 404
 # ---------------------------------------------------------------- lighthouse game (404 + play.html)
@@ -1091,8 +1118,8 @@ def write_i18n():
     if miss2: print("WARNING missing zh/ko:", miss2[:10])
     for i, code in enumerate(("zh", "ko")):
         data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
-    import i18n_p0, i18n_acct   # v3.4 strings and account/sign-in strings, all 8 languages in one row
-    for row in i18n_p0.P + i18n_acct.P:
+    import i18n_p0, i18n_acct, i18n_admin   # v3.4, account/sign-in and admin strings, all 8 languages in one row
+    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P:
         assert len(row) == 9, row[0]
         for code, val in zip(("de", "fr", "ja", "es", "ru", "ar", "zh", "ko"), row[1:]):
             data[code][row[0]] = val
@@ -1102,4 +1129,4 @@ def write_i18n():
 
 if __name__ == "__main__":
     import sys; sys.path.insert(0, os.path.join(ROOT, "_build")); write_i18n()
-    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_account(); build_404(); write_sitemap()
+    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_account(); build_admin(); build_404(); write_sitemap()

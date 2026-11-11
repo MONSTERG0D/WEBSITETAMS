@@ -10,7 +10,7 @@ export async function onRequestGet({ env }) {
   const c = config(env);
   const out = {
     ok: false, service: "tas-api", db: "missing", database: null, schema: null, schema_needed: SCHEMA_NEEDED, tables: 0,
-    signin: { session_secret: c.secret, google: c.google, turnstile: c.turnstile, email_service: c.mail, email_code: c.email },
+    signin: { session_secret: c.secret, google: c.google, turnstile: c.turnstile, email_service: c.mail, email_code: c.email, admin_email: !!(env.ADMIN_EMAIL && String(env.ADMIN_EMAIL).trim()) },
     time: new Date().toISOString(),
   };
 

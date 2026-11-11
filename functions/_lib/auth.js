@@ -166,5 +166,20 @@ export async function endSession(env, sessionId) {
   await env.DB.prepare("UPDATE sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").bind(now(), sessionId).run();
 }
 
+/* The site owner. Decided by the ADMIN_EMAIL setting in Cloudflare, never by anything in the database,
+   so no row can be edited into an admin. The address must also have been verified by a real sign-in. */
+export function isAdmin(user, env) {
+  const owner = typeof env.ADMIN_EMAIL === "string" ? env.ADMIN_EMAIL.trim().toLowerCase() : "";
+  return !!owner && !!user && user.email_verified === 1 && String(user.email).toLowerCase() === owner;
+}
+
+export async function requireAdmin(request, env) {
+  requireReady(env);
+  const session = await getSession(request, env);
+  if (!session) throw new HttpError(401, "signed_out", "Sign in first.");
+  if (!isAdmin(session.user, env)) throw new HttpError(403, "forbidden", "This page is only for the site owner.");
+  return session;
+}
+
 /* The only user details a page ever receives. */
 export const publicUser = (u) => ({ email: u.email, name: u.name || null, method: u.signup_method, since: u.created_at });

@@ -16,6 +16,30 @@ export async function sendMail(env, { to, subject, text, html }) {
   return false;
 }
 
+/* A short plain note to the site owner (new sign-up, new order). Goes to NOTIFY_EMAIL, or the
+   address already printed on the site. Never throws: a notice that fails must not break a sign-in. */
+const OWNER_DEFAULT = "ak4418561@gmail.com";
+const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+export async function notifyOwner(env, subject, lines) {
+  if (!env.EMAIL_API_KEY || !env.MAIL_FROM) return false;
+  const text = lines.join("\n") + "\n\nAdmin page: https://theaamirsheikh.com/admin.html";
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#0b0b0d">${lines.map((l) => `<div>${escHtml(l) || "&nbsp;"}</div>`).join("")}<p style="margin-top:16px"><a href="https://theaamirsheikh.com/admin.html">Open the admin page</a></p></div>`;
+  return sendMail(env, { to: env.NOTIFY_EMAIL || OWNER_DEFAULT, subject: subject + " — THE AAMIR SHEIKH", text, html });
+}
+
+export function signupNotice(env, user, method, meta) {
+  const when = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
+  return notifyOwner(env, "New sign-up: " + user.email, [
+    "Someone just made an account.", "",
+    "Email: " + user.email,
+    "Name: " + (user.name || "(not given)"),
+    "Signed in with: " + (method === "google" ? "Google" : "an email code"),
+    "Country: " + (meta.country || "unknown"),
+    "Time: " + when + " IST",
+  ]);
+}
+
 /* The sign-in code email, in the nine site languages: subject, heading, how to use it, what to do if unexpected. */
 const CODE_TEXT = {
   en: ["{code} is your sign-in code for THE AAMIR SHEIKH", "Your sign-in code", "Enter this code on the sign-in page. It works for 10 minutes and only once.", "If you didn’t ask for this, you can ignore this email."],

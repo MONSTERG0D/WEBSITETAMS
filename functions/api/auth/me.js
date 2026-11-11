@@ -1,6 +1,6 @@
 /* GET /api/auth/me — who is signed in (if anyone) and which sign-in methods are switched on. */
 import { json, cookies } from "../../_lib/http.js";
-import { config, getSession, publicUser, clearSessionCookies, SESSION_COOKIE, HINT_COOKIE } from "../../_lib/auth.js";
+import { config, getSession, publicUser, isAdmin, clearSessionCookies, SESSION_COOKIE, HINT_COOKIE } from "../../_lib/auth.js";
 
 export async function onRequestGet({ request, env }) {
   const c = config(env);
@@ -19,6 +19,7 @@ export async function onRequestGet({ request, env }) {
   const session = await getSession(request, env);
   if (session) {
     out.user = publicUser(session.user);
+    if (isAdmin(session.user, env)) out.admin = true;
     return res();
   }
   // A leftover cookie from an ended session: clear it so the header button stops saying "Account".

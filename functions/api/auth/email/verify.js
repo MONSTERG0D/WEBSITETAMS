@@ -2,12 +2,13 @@
    Checks the emailed code and signs the person in. Five wrong tries retire the code. */
 import { HttpError, json, readJson } from "../../../_lib/http.js";
 import { hmacHex, safeEqual } from "../../../_lib/crypto.js";
+import { signupNotice } from "../../../_lib/mail.js";
 import {
   requireReady, cleanEmail, cleanLang, requestMeta, logEvent, countEvents, now, LIMITS, CODE_MAX_TRIES,
   findOrCreateUser, createSession, sessionCookies, publicUser,
 } from "../../../_lib/auth.js";
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   requireReady(env, "email");
   const body = await readJson(request);
   const email = cleanEmail(body.email);
@@ -54,6 +55,7 @@ export async function onRequestPost({ request, env }) {
   }
   const token = await createSession(env, found.user.id, "email");
   await logEvent(env, meta, { userId: found.user.id, email, method: "email", event: found.created ? "signup" : "login" });
+  if (found.created) waitUntil(signupNotice(env, found.user, "email", meta)); // tell the owner, without making the visitor wait
 
   const res = json({ ok: true, user: publicUser(found.user), new_account: found.created });
   for (const c of sessionCookies(token)) res.headers.append("Set-Cookie", c);
