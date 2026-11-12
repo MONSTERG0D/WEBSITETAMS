@@ -1,7 +1,7 @@
 /* ==========================================================================
    THE AAMIR SHEIKH — v3 · three interfaces
    RIOT (electric guitar, DMC3 nights since v3.11) · NOIR (smooth jazz) · VILLAGE (ambient village)
-   Palettes: Riot crimson/steel blue (#FF2B45 / #5B8CFF, v3.11; was pink/acid #FF0054 / #9EFF00),
+   Palettes: Riot orange/crimson (#FF7A1A / #FF2B45, v3.11; was pink/acid #FF0054 / #9EFF00),
    Noir + Village built from Color Hunt / Coolors-style 4-colour sets.
    ========================================================================== */
 
@@ -24,12 +24,12 @@
   --f-hand: "Caveat", "Segoe Print", cursive;
 }
 
-/* RIOT — Devil May Cry 3 nights: crimson blade × steel-blue blade, a tower under the moon, gothic frames, ash (v3.11 refresh) */
+/* RIOT — Devil May Cry 3 nights in orange and crimson: two blades, a tower under an orange halo, gothic frames, ash (v3.11 refresh) */
 :root[data-ui="riot"] {
   --bg: #09090d; --bg-2: #101018; --panel: #14141c; --panel-2: #1b1b25;
   --fg: #f1ece2; --fg-2: #b8b2a7; --fg-3: #7c776e;
   --rule: rgba(201, 206, 216, .15);
-  --accent: #ff2b45; --accent-2: #5b8cff; --on-accent: #0b0b0f;
+  --accent: #ff7a1a; --accent-2: #ff2b45; --on-accent: #0b0b0f; --crimson: #ff2b45; --ember: #ffb36b;
   --blood: #9b0d1f; --steel: #c9ced8; --orn: color-mix(in srgb, var(--steel) 55%, transparent);
   --f-display: "Anton", Impact, "Arial Narrow Bold", sans-serif;
   --f-goth: "Cinzel", "Trajan Pro", "Iowan Old Style", Georgia, serif;
@@ -37,7 +37,7 @@
   --radius: 0px; --cut: 14px;
   --shadow: 6px 6px 0 var(--accent);
   --tex-op: .5;
-  --a-bg: #11121a; --a-ink: #f1ece2; --a-mute: #8a857c; --a-grid: rgba(201,206,216,.08); --a-red: #ff2b45;
+  --a-bg: #11121a; --a-ink: #f1ece2; --a-mute: #8a857c; --a-grid: rgba(201,206,216,.08); --a-red: #ff7a1a;
   color-scheme: dark;
 }
 /* NOIR — late-night jazz club, brass and smoke */
@@ -900,8 +900,8 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 28px; }
 
 /* ---------- custom cursors per interface (mouse only; off in high contrast) ---------- */
 @media (hover: hover) and (pointer: fine) {
-  :root[data-ui="riot"]:not([data-cvd="contrast"]), :root[data-ui="riot"]:not([data-cvd="contrast"]) body { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M27 4 L8 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M27 4 L8 23' stroke='%23f4f1ea' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%235b8cff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%230b0b0d' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%23ff2b45' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 27 4, auto; }
-  :root[data-ui="riot"]:not([data-cvd="contrast"]) :is(a, button, label, summary, [role="tab"]) { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M27 4 L8 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M27 4 L8 23' stroke='%23ff2b45' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%235b8cff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%230b0b0d' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%23ff2b45' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 27 4, pointer; }
+  :root[data-ui="riot"]:not([data-cvd="contrast"]), :root[data-ui="riot"]:not([data-cvd="contrast"]) body { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M27 4 L8 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M27 4 L8 23' stroke='%23f4f1ea' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%23ff2b45' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%230b0b0d' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%23ff7a1a' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 27 4, auto; }
+  :root[data-ui="riot"]:not([data-cvd="contrast"]) :is(a, button, label, summary, [role="tab"]) { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M27 4 L8 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M27 4 L8 23' stroke='%23ff7a1a' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%230b0b0d' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M9 19 L13 23' stroke='%23ff2b45' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%230b0b0d' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M8 23 L3 28' stroke='%23ff7a1a' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 27 4, pointer; }
   :root[data-ui="noir"]:not([data-cvd="contrast"]), :root[data-ui="noir"]:not([data-cvd="contrast"]) body { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%230e1424' stroke-width='5'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23d4a24c' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23f3e9d2' stroke='%230e1424' stroke-width='1.2'/%3E%3C/svg%3E") 16 16, auto; }
   :root[data-ui="noir"]:not([data-cvd="contrast"]) :is(a, button, label, summary, [role="tab"]) { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%230e1424' stroke-width='5'/%3E%3Ccircle cx='16' cy='16' r='10' fill='rgba(212,162,76,.35)' stroke='%23d4a24c' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23f3e9d2' stroke='%230e1424' stroke-width='1.2'/%3E%3C/svg%3E") 16 16, pointer; }
   :root[data-ui="village"]:not([data-cvd="contrast"]), :root[data-ui="village"]:not([data-cvd="contrast"]) body { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 3 C 20 2 30 12 28 28 C 12 30 2 20 3 3 Z' fill='%235b7b4a' stroke='%232b2a26' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M4 4 L 24 24' stroke='%23efe6d2' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M12 12 L 18 10 M16 16 L 22 15 M12 12 L 11 18 M16 16 L 15 22' stroke='%23efe6d2' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E") 3 3, auto; }
@@ -1368,7 +1368,7 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 @keyframes roseIn { from { opacity: 0; transform: translate(50%, -50%) rotate(-30deg) scale(.9); } to { opacity: .14; transform: translate(50%, -50%); } }
 @keyframes roseSpin { to { transform: translate(50%, -50%) rotate(360deg); } }
 [data-ui="riot"] .tower { display: block; position: absolute; z-index: 1; bottom: 0; right: var(--cx); width: min(40vh, 330px); height: 88%; transform: translateX(50%);
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 600' preserveAspectRatio='xMidYMax meet'%3E%3Cpath d='M20 600 L20 470 L34 450 L34 420 L52 404 L52 300 L62 288 L62 240 L74 228 L74 150 L84 140 L84 120 L100 8 L116 120 L116 140 L126 150 L126 228 L138 240 L138 288 L148 300 L148 404 L166 420 L166 450 L180 470 L180 600 Z M34 420 L38 380 L42 420 Z M158 420 L162 380 L166 420 Z M52 300 L56 262 L60 300 Z M140 300 L144 262 L148 300 Z M62 240 L66 206 L70 240 Z M130 240 L134 206 L138 240 Z' fill='%2307070b' stroke='%235b8cff' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M94 190 L94 166.0 Q100.0 152.8 106 166.0 L106 190 Z M80 278 L80 257.0 Q85.0 246.0 90 257.0 L90 278 Z M110 278 L110 257.0 Q115.0 246.0 120 257.0 L120 278 Z M66 360 L66 335.0 Q71.0 324.0 76 335.0 L76 360 Z M95 360 L95 327.0 Q100.0 316.0 105 327.0 L105 360 Z M124 360 L124 335.0 Q129.0 324.0 134 335.0 L134 360 Z M48 514 L48 486.0 Q54.0 472.8 60 486.0 L60 514 Z M94 514 L94 476.0 Q100.0 462.8 106 476.0 L106 514 Z M140 514 L140 486.0 Q146.0 472.8 152 486.0 L152 514 Z M94 82 L94 66.0 Q100.0 52.8 106 66.0 L106 82 Z ' fill='%23ff2b45' fill-opacity='.62'/%3E%3C/svg%3E") center bottom / contain no-repeat; filter: drop-shadow(0 0 18px rgba(255, 43, 69, .18)); }
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 600' preserveAspectRatio='xMidYMax meet'%3E%3Cpath d='M20 600 L20 470 L34 450 L34 420 L52 404 L52 300 L62 288 L62 240 L74 228 L74 150 L84 140 L84 120 L100 8 L116 120 L116 140 L126 150 L126 228 L138 240 L138 288 L148 300 L148 404 L166 420 L166 450 L180 470 L180 600 Z M34 420 L38 380 L42 420 Z M158 420 L162 380 L166 420 Z M52 300 L56 262 L60 300 Z M140 300 L144 262 L148 300 Z M62 240 L66 206 L70 240 Z M130 240 L134 206 L138 240 Z' fill='%2307070b' stroke='%23ff2b45' stroke-opacity='.35' stroke-width='1.2'/%3E%3Cpath d='M94 190 L94 166.0 Q100.0 152.8 106 166.0 L106 190 Z M80 278 L80 257.0 Q85.0 246.0 90 257.0 L90 278 Z M110 278 L110 257.0 Q115.0 246.0 120 257.0 L120 278 Z M66 360 L66 335.0 Q71.0 324.0 76 335.0 L76 360 Z M95 360 L95 327.0 Q100.0 316.0 105 327.0 L105 360 Z M124 360 L124 335.0 Q129.0 324.0 134 335.0 L134 360 Z M48 514 L48 486.0 Q54.0 472.8 60 486.0 L60 514 Z M94 514 L94 476.0 Q100.0 462.8 106 476.0 L106 514 Z M140 514 L140 486.0 Q146.0 472.8 152 486.0 L152 514 Z M94 82 L94 66.0 Q100.0 52.8 106 66.0 L106 82 Z ' fill='%23ff7a1a' fill-opacity='.62'/%3E%3C/svg%3E") center bottom / contain no-repeat; filter: drop-shadow(0 0 18px rgba(255, 43, 69, .18)); }
 .ready[data-ui="riot"] .tower { animation: towerUp 1.4s .1s var(--ease) both; }
 @keyframes towerUp { from { opacity: 0; transform: translate(50%, 40px); } to { opacity: 1; transform: translateX(50%); } }
 /* the two blades cross at one point and clash there */
@@ -1461,7 +1461,8 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { [data-ui="riot"] :is(.rose, .tower, .clash), [data-ui="riot"] .spray::after { animation: none !important; } [data-ui="riot"] .clash { opacity: .55; } [data-ui="riot"] .ash, [data-ui="riot"] .btn::after { display: none; } }
 :root[data-cvd="contrast"] :is(.rose, .moon, .ash, .clash) { display: none !important; }
 @media (max-width: 860px) {
-  [data-ui="riot"] :is(.moon, .rose) { right: auto; left: calc(var(--gut) + 6.6svh); top: 9svh; width: 24svh; transform: translate(-50%, -50%); }
+  [data-ui="riot"] :is(.moon, .rose) { right: auto; left: calc(var(--gut) + 6.6svh); top: 15svh; width: 26svh; transform: translate(-50%, -50%); }
+  [data-ui="riot"] .moon { transform: translate(-50%, -50%) rotate(-28deg); }
   .ready[data-ui="riot"] .rose { animation: none; }
   [data-ui="riot"] .tower { right: auto; left: calc(var(--gut) + 6.6svh); top: 0; bottom: auto; height: 31svh; width: 17svh; transform: translateX(-50%); animation: none !important; }
   [data-ui="riot"] .spray { font-size: 1.5rem; top: auto; bottom: auto; right: calc(var(--gut) + 6px); top: calc(2.5svh + 27svh - 3.4rem); }
@@ -1469,6 +1470,7 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 }
 @media (min-width: 861px) {
   [dir="rtl"][data-ui="riot"] :is(.rose, .moon) { right: auto; left: var(--cx); transform: translate(-50%, -50%); }
+  [dir="rtl"][data-ui="riot"] .moon { transform: translate(-50%, -50%) rotate(208deg); }
   [dir="rtl"][data-ui="riot"] .tower { right: auto; left: var(--cx); transform: translateX(-50%); animation: none; }
 }
 @keyframes roseInRtl { from { opacity: 0; } to { opacity: .14; } }
@@ -1653,3 +1655,110 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 .svc-pg { display: inline-flex; align-items: baseline; gap: 8px; margin-inline-start: auto; white-space: nowrap; }
 /* 320px phones: the Riot wordmark scales with the screen, so the menu button stays inside even before the display font loads */
 @media (max-width: 360px) { [data-ui="riot"] .wordmark { font-size: min(1.1rem, 5vw); } }
+
+/* =====================================================================
+   v3.11b — Riot in orange and crimson (from Aamir's "new riot look" references: black, a glowing orange halo,
+   big clean type). Orange leads; crimson stays for the blades, the style letter and the S-rank flash.
+   ===================================================================== */
+[data-ui="riot"] .scroll-prog { background: linear-gradient(90deg, var(--blood), var(--crimson) 45%, var(--accent)); }
+[data-ui="riot"] .hero-title .ht-a { text-shadow: 4px 4px 0 var(--accent), -2px -2px 0 rgba(255, 43, 69, .75); }
+[data-ui="riot"] .hero-k { color: var(--accent); }
+[data-ui="riot"] .big-num { -webkit-text-stroke-color: rgba(255, 122, 26, .45); }
+[data-ui="riot"] .slash-in::after { background: linear-gradient(90deg, var(--blood), var(--crimson) 40%, var(--accent)); }
+[data-ui="riot"] .spray { text-shadow: 0 0 18px rgba(255, 122, 26, .6); }
+[data-ui="riot"] .spray::before { box-shadow: inset 0 0 28px rgba(255, 122, 26, .3), 0 0 0 5px rgba(9, 9, 13, .55); }
+[data-ui="riot"] .clash { background: radial-gradient(circle, #fff 0 2.5%, rgba(255, 255, 255, .85) 5%, rgba(255, 122, 26, .6) 16%, rgba(255, 43, 69, .35) 30%, transparent 58%); }
+[data-ui="riot"] :is(.hero-rank, .rank) b { background: linear-gradient(180deg, #ffd29a 0%, var(--accent) 40%, var(--crimson) 75%, var(--blood) 100%); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 16px rgba(255, 122, 26, .4)); }
+[data-ui="riot"] .rank-bar i { background: linear-gradient(90deg, var(--crimson), var(--accent)); }
+/* the moon becomes a glowing orange halo, open at one side, like the references */
+[data-ui="riot"] .moon { background: radial-gradient(circle, transparent 58%, rgba(255, 122, 26, .07) 70%); border-radius: 50%; opacity: .95; box-shadow: none;
+  border: 2.5px solid var(--accent); border-left-color: transparent; transform: translate(50%, -50%) rotate(-28deg);
+  filter: drop-shadow(0 0 10px rgba(255, 122, 26, .9)) drop-shadow(0 0 26px rgba(255, 122, 26, .45)); }
+.ready[data-ui="riot"] .moon { animation: haloIn 1.4s .15s var(--ease) both, haloBreath calc(6s * var(--spd)) 1.6s ease-in-out infinite; }
+@keyframes haloIn { from { opacity: 0; transform: translate(50%, -50%) rotate(-120deg) scale(.92); } to { opacity: .95; transform: translate(50%, -50%) rotate(-28deg); } }
+@keyframes haloBreath { 0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 122, 26, .9)) drop-shadow(0 0 26px rgba(255, 122, 26, .45)); } 50% { filter: drop-shadow(0 0 14px rgba(255, 150, 60, 1)) drop-shadow(0 0 40px rgba(255, 122, 26, .6)); } }
+@media (max-width: 860px) { .ready[data-ui="riot"] .moon { animation: none; } }
+[dir="rtl"] .ready[data-ui="riot"] .moon, .ready[dir="rtl"][data-ui="riot"] .moon { animation: none; }
+/* section labels get a short orange rule, as in the references ("01 / PORTFOLIO ——") */
+[data-ui="riot"] .s-head > .label::after { content: ""; width: 56px; height: 1px; background: var(--accent); margin-inline-start: 6px; }
+
+/* the sticker girl: an orange rim light, and small living details */
+/* no white sticker border any more (Aamir's call): just an orange rim glow and a soft shadow */
+[data-ui="riot"] .hc-riot { overflow: visible; filter: drop-shadow(0 0 2px rgba(255, 122, 26, .7)) drop-shadow(0 0 20px rgba(255, 122, 26, .4)) drop-shadow(10px 12px 14px rgba(0, 0, 0, .45)); }
+/* no blade slashes across the Riot hero any more (Aamir's call): the orange, crimson and steel slashes and their spark are gone */
+[data-ui="riot"] :is(.slash, .clash) { display: none !important; }
+.hc-riot .rc-scarf { transform-origin: 152px 190px; transform-box: view-box; }
+.hc-riot .rc-hair { transform-origin: 182px 60px; transform-box: view-box; }
+.hc-riot .rc-eyes { transform-origin: 180px 124px; transform-box: view-box; }
+.ready[data-ui="riot"] .hc-riot .rc-scarf { animation: rcScarf calc(2.6s * var(--spd)) ease-in-out infinite; }
+.ready[data-ui="riot"] .hc-riot .rc-hair { animation: rcHair calc(4.2s * var(--spd)) ease-in-out infinite; }
+.ready[data-ui="riot"] .hc-riot .rc-eyes { animation: rcBlink 5.2s 2s infinite; }
+.ready[data-ui="riot"] .hc-riot .rc-led { animation: rcLed 2.4s ease-in-out infinite; }
+.ready[data-ui="riot"] .hc-riot .rc-glint { animation: rcGlint calc(4.5s * var(--spd)) 1.8s ease-in-out infinite; }
+@keyframes rcScarf { 0%, 100% { transform: rotate(0deg) skewY(0deg); } 30% { transform: rotate(-4deg) skewY(2deg); } 60% { transform: rotate(2deg) skewY(-1.5deg); } }
+@keyframes rcHair { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-1.4deg); } }
+@keyframes rcBlink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes rcLed { 0%, 100% { fill: #fff4e6; } 50% { fill: #ff7a1a; } }
+@keyframes rcGlint { 0% { stroke-dashoffset: 0; opacity: 0; } 8% { opacity: 1; } 40% { stroke-dashoffset: -260; opacity: 1; } 48%, 100% { stroke-dashoffset: -260; opacity: 0; } }
+.hc-riot .rc-glint { opacity: 0; }
+:root[data-motion="reduce"] .hc-riot :is(.rc-scarf, .rc-hair, .rc-eyes, .rc-led, .rc-glint) { animation: none !important; }
+:root[data-motion="reduce"] [data-ui="riot"] .moon, :root[data-motion="reduce"][data-ui="riot"] .moon { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .hc-riot :is(.rc-scarf, .rc-hair, .rc-eyes, .rc-led, .rc-glint) { animation: none !important; } [data-ui="riot"] .moon { animation: none !important; } }
+:root[data-cvd="contrast"] [data-ui="riot"] .hc-riot, :root[data-cvd="contrast"][data-ui="riot"] .hc-riot { filter: none; }
+@media (max-width: 860px) { [data-ui="riot"] .moon { transform: translate(-50%, -50%) rotate(-28deg); } [dir="rtl"][data-ui="riot"] .moon { transform: translate(-50%, -50%) rotate(-28deg); } }
+
+/* v3.11 — Sundown Trail screenshots under its mission on Work (same grid as Blender Studies) */
+.stgal-wrap { margin-top: clamp(-40px, -3vw, -16px); margin-bottom: clamp(48px, 7vw, 96px); }
+.stgal-h { margin-bottom: 12px; }
+.stgal figure.big img { aspect-ratio: 16 / 10; }
+.stgal img { aspect-ratio: 16 / 10; transition: transform .8s var(--ease), filter .4s; }
+.stgal figure:hover img { transform: scale(1.04); }
+[data-ui="riot"] .stgal figure { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+[data-ui="noir"] .stgal figure { border-radius: 16px; }
+[data-ui="village"] .stgal figure { box-shadow: var(--shadow); border: 6px solid #fbf6ea; border-bottom-width: 22px; border-radius: 4px; }
+.st-film .clip-a { position: absolute; inset: 0; display: block; }
+.st-film .tile-media { position: absolute; inset: 0; aspect-ratio: auto; height: 100%; }
+.stgal figure.st-film { min-height: 220px; aspect-ratio: 16 / 9; }
+@media (min-width: 761px) { .stgal figure.st-film { aspect-ratio: auto; } }
+@media (max-width: 760px) { .stgal figcaption { left: 6px; bottom: 6px; padding: 3px 6px; font-size: .75rem; letter-spacing: .03em; } }
+
+/* v3.11c — on wide screens the Riot girl steps out of the film's slanted edge instead of standing behind the name,
+   and the name is a touch smaller so the two never overlap */
+@media (min-width: 861px) {
+  [data-ui="riot"] .hc-riot { right: calc(min(40%, 560px) - 135px); z-index: 4; }
+  [data-ui="riot"] .hs-riot { --cx: calc(min(40%, 560px) - 20px); }
+  [data-ui="riot"] .hero-title { font-size: clamp(4rem, 12.5vw, 14rem); }
+  [dir="rtl"][data-ui="riot"] .hc-riot { right: auto; left: calc(min(40%, 560px) - 135px); }
+}
+
+/* =====================================================================
+   v3.11 — the 404 page: Sundown ride (a canvas game; colours are the game's own sunset, in every interface)
+   ===================================================================== */
+.ride { padding-top: clamp(20px, 3vw, 40px); padding-bottom: clamp(40px, 6vw, 80px); }
+.ride-stage { position: relative; isolation: isolate; aspect-ratio: 16 / 7; min-height: 340px; max-height: 78svh; border-radius: min(var(--radius), 18px); overflow: hidden;
+  background: #2a1424; direction: ltr; touch-action: manipulation; -webkit-user-select: none; user-select: none; outline-offset: 4px; }
+.ride-stage.on { cursor: pointer; }
+.ride-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ride-hud { position: absolute; z-index: 2; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.ride-hud .pill { background: rgba(12, 6, 10, .55); color: #f6efe6; border-color: rgba(246, 239, 230, .28); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.ride-hud .pill b { font-variant-numeric: tabular-nums; }
+.ride-panel { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; padding: clamp(16px, 4vw, 48px); overflow: auto;
+  --fg: #f6efe6; --fg-2: #ddd2c4; --rule: rgba(246, 239, 230, .3); color: var(--fg);
+  background: linear-gradient(90deg, rgba(14, 7, 12, .86), rgba(14, 7, 12, .55) 70%, rgba(14, 7, 12, .25)); }
+.ride-panel > div { width: 100%; max-width: 40rem; display: grid; gap: 12px; justify-items: start; }
+[dir="rtl"] .ride-panel > div { direction: rtl; }
+.ride-panel .label { color: var(--fg-2); }
+.ride-panel .lead { color: var(--fg); max-width: 32em; }
+.ride-panel .mini { color: var(--fg-2); }
+.ride-panel .btn:not(.btn--solid) { --b: var(--fg); color: var(--fg); }
+[data-ui="village"] .ride-panel .btn { box-shadow: 3px 3px 0 rgba(0, 0, 0, .5); }
+.ride-panel .lh-rank { justify-items: start; }
+.ride-panel .lh-rank b { color: #ffb36b; }
+.ride-more { display: flex; flex-wrap: wrap; align-items: center; gap: .5em; margin-top: 14px; }
+.ride-more .i { width: 16px; height: 16px; color: var(--accent); }
+@media (max-width: 600px) { .ride-stage { aspect-ratio: 3 / 4; max-height: 82svh; } .ride-panel { background: linear-gradient(180deg, rgba(14, 7, 12, .86), rgba(14, 7, 12, .7)); place-items: end start; } }
+.ride-panel[hidden] { display: none; }
+.ride-stage.on:focus-visible { outline-color: rgba(255, 179, 107, .55); }
+.st-film .play-ico { left: 50%; top: 50%; bottom: auto; width: 64px; height: 64px; transform: translate(-50%, -50%); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.st-film .play-ico .i { width: 24px; height: 24px; }
+.st-film .clip-a:hover .play-ico { transform: translate(-50%, -50%) scale(1.1); }

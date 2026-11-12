@@ -464,7 +464,7 @@
     var upd = function () {
       var i = Math.min(RL.length - 1, Math.floor(pts / 15));
       if (bar) bar.style.setProperty("--rk", pts + "%");
-      if (i !== rcur) { if (i > rcur && i >= 4) devilTrigger(); rcur = i; heroRank.textContent = RL[i]; rw.textContent = RW[i]; heroRank.classList.add("pop"); setTimeout(function () { heroRank.classList.remove("pop"); }, 220); }
+      if (i !== rcur) { if (i > rcur && i >= 4) devilTrigger(); rcur = i; heroRank.textContent = RL[i]; rw.textContent = T(RW[i]); heroRank.classList.add("pop"); setTimeout(function () { heroRank.classList.remove("pop"); }, 220); }
     };
     doc.addEventListener("click", function () { bump(7); });
     var lastY = 0; window.addEventListener("scroll", function () { var y = window.scrollY; if (Math.abs(y - lastY) > 120) { bump(3); lastY = y; } }, { passive: true });
@@ -585,7 +585,7 @@
       var max = root.scrollHeight - window.innerHeight, p = max > 0 ? window.scrollY / max : 0;
       rank.classList.toggle("show", window.scrollY > 300);
       var i = Math.min(letters.length - 1, Math.floor(p * letters.length));
-      if (i !== cur) { if (cur >= 0 && i > cur && i >= 4) devilTrigger(); cur = i; rb.textContent = letters[i]; rs.textContent = words[i]; rb.classList.add("pop"); setTimeout(function () { rb.classList.remove("pop"); }, 260); }
+      if (i !== cur) { if (cur >= 0 && i > cur && i >= 4) devilTrigger(); cur = i; rb.textContent = letters[i]; rs.textContent = T(words[i]); rb.classList.add("pop"); setTimeout(function () { rb.classList.remove("pop"); }, 260); }
     };
     window.addEventListener("scroll", rupd, { passive: true }); rupd();
   }
@@ -858,7 +858,7 @@
     var items = []; try { items = JSON.parse(box.getAttribute("data-items")); } catch (e) { return; }
     var vids = $$(".at-stage video", box), tt = $(".at-title", box), tk = $(".at-kind", box), logo = $(".at-logo", box);
     var IDLE = 45000, timer = null, on = false, idx = 0, cur = 0, swap = null, raf = null;
-    var colors = ["#ff2b45", "#5b8cff", "#d4a24c", "#3aa0ff", "#f4f1ea", "#e07a8a"], ci = 0;
+    var colors = ["#ff7a1a", "#ff2b45", "#d4a24c", "#3aa0ff", "#f4f1ea", "#e07a8a"], ci = 0;
     var x = 40, y = 40, dx = 2.2, dy = 1.7;
     function busy() {
       var a = doc.activeElement, tag = a && a.tagName;
@@ -906,7 +906,274 @@
     arm();
   })();
 
-  /* ===================================================== Lighthouse game (404 + play.html)
+  /* ===================================================== Sundown ride: the 404 game (v3.11)
+     Juniper and her rider gallop home at sunset. Space / up arrow / tap to jump, hold to jump higher.
+     Everything is drawn here on a canvas: no images, no libraries. */
+  (function sundownRide() {
+    var box = $("[data-ride]"); if (!box) return;
+    var stage = $("[data-ride-stage]", box), cv = $("[data-ride-canvas]", box), g = cv.getContext("2d");
+    var card = $("[data-ride-card]", box), endp = $("[data-ride-end]", box), say = $("[data-ride-say]", box);
+    var elDist = $("[data-ride-dist]", box), elApples = $("[data-ride-apples]", box), elBest = $("[data-ride-best]", box);
+    var RL = ["D", "C", "B", "A", "S", "SS", "SSS"], RW = ["Dull", "Cool", "Bravo", "Absolute", "Stylish", "Sensational", "Smokin' Sexy Style"];
+    var best = 0; try { best = +localStorage.getItem("tasRide") || 0; } catch (e) {}
+    elBest.textContent = best ? String(best) : "—";
+    var W = 0, H = 0, s = 1, gy = 0, dpr = 1, HX = 0;
+    var state = "ready", last = 0, raf = null;
+    var G = 2900, JV = 720, HOLD = .2;
+    var speed = 0, dist = 0, apples = 0, obs = [], fruit = [], dust = [], nextObs = 0, nextFruit = 0;
+    var hy = 0, vy = 0, air = false, holding = false, holdT = 0, buffer = 0, ph = 0, crash = 0, shake = 0, clock = 0;
+    function hash(i) { var x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function mix(c1, c2, t) { return "rgb(" + [0, 1, 2].map(function (k) { return Math.round(lerp(c1[k], c2[k], t)); }).join(",") + ")"; }
+    function paused() { return doc.hidden || (pause && pause.classList.contains("open")) || (panel && panel.classList.contains("open")); }
+
+    function size() {
+      var r = stage.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      s = Math.min(H / 340, W / 760); gy = H - Math.max(34 * s, H * .14); HX = Math.max(80 * s, W * .18);
+      draw();
+    }
+
+    /* ---------- sky: golden → sunset → night as the ride goes on */
+    var SKY = [[[255, 196, 120], [244, 128, 82], [120, 56, 84]], [[70, 36, 78], [214, 92, 102], [255, 164, 98]], [[10, 12, 30], [40, 30, 66], [120, 60, 80]]];
+    function skyAt(t) {   // t 0..2
+      var i = Math.min(1, Math.floor(t)), f = Math.min(1, t - i), a = SKY[i], b = SKY[i + 1];
+      return [0, 1, 2].map(function (k) { return [0, 1, 2].map(function (c) { return Math.round(lerp(a[k][c], b[k][c], f)); }); });
+    }
+    function sky() {
+      var t = Math.min(2, .35 + dist / 24000), c = skyAt(t);
+      var gr = g.createLinearGradient(0, 0, 0, gy);
+      gr.addColorStop(0, "rgb(" + c[2] + ")"); gr.addColorStop(.6, "rgb(" + c[1] + ")"); gr.addColorStop(1, "rgb(" + c[0] + ")");
+      g.fillStyle = gr; g.fillRect(0, 0, W, gy + 2);
+      var night = Math.max(0, t - 1.3) / .7;
+      if (night > 0) { g.fillStyle = "rgba(255,244,220," + (.8 * night) + ")"; for (var i = 0; i < 60; i++) { var x = hash(i) * W, y = hash(i + 99) * gy * .7, r = hash(i + 7) * 1.3 + .3; g.fillRect(x, y, r, r); } }
+      var sx = W * .7, sy = lerp(gy * .32, gy + 30 * s, Math.min(1, t / 1.25)), sr = 34 * s;
+      var glow = g.createRadialGradient(sx, sy, sr * .3, sx, sy, sr * 4.5);
+      glow.addColorStop(0, "rgba(255,226,160,.55)"); glow.addColorStop(1, "rgba(255,160,90,0)");
+      g.fillStyle = glow; g.fillRect(0, 0, W, gy);
+      g.fillStyle = "rgba(255,236,190," + (1 - night * .9) + ")"; g.beginPath(); g.arc(sx, sy, sr, 0, 6.283); g.fill();
+      return t;
+    }
+    /* far mesas, mid hills, near hills: each scrolls slower than the ground */
+    function mesas(t) {
+      var par = .06, seg = 220 * s, off = (dist * s * par) % seg, i0 = Math.floor(dist * s * par / seg);
+      g.fillStyle = mix([150, 72, 92], [34, 24, 52], Math.min(1, t / 2)); g.beginPath(); g.moveTo(0, gy);
+      for (var k = -1; k < W / seg + 2; k++) {
+        var x = k * seg - off, h = (40 + hash(i0 + k) * 70) * s, flat = hash(i0 + k + 50) > .45;
+        if (flat) { g.lineTo(x + seg * .18, gy - h); g.lineTo(x + seg * .62, gy - h); g.lineTo(x + seg * .8, gy - h * .25); }
+        else g.lineTo(x + seg * .5, gy - h * .45);
+        g.lineTo(x + seg, gy - 6 * s);
+      }
+      g.lineTo(W, gy); g.closePath(); g.fill();
+    }
+    function hills(par, amp, base, col) {
+      var off = dist * s * par;
+      g.fillStyle = col; g.beginPath(); g.moveTo(0, gy + 2);
+      for (var x = 0; x <= W + 8; x += 8) { var u = (x + off) / s; g.lineTo(x, gy - (base + Math.sin(u * .006) * amp + Math.sin(u * .017 + 1.3) * amp * .4) * s); }
+      g.lineTo(W, gy + 2); g.closePath(); g.fill();
+    }
+    function ground(t) {
+      g.fillStyle = mix([92, 56, 34], [30, 22, 26], Math.min(1, t / 2)); g.fillRect(0, gy, W, H - gy);
+      g.fillStyle = mix([124, 80, 46], [44, 32, 34], Math.min(1, t / 2)); g.fillRect(0, gy, W, 3 * s);
+      var sp = 34 * s, off = (dist * s) % sp, i0 = Math.floor(dist * s / sp);
+      g.strokeStyle = mix([168, 132, 70], [70, 60, 50], Math.min(1, t / 2)); g.lineWidth = Math.max(1, 1.4 * s);
+      for (var k = -1; k < W / sp + 2; k++) {
+        var x = k * sp - off + hash(i0 + k) * sp * .6, y = gy + (6 + hash(i0 + k + 3) * (H - gy - 12)) ;
+        var h = (5 + hash(i0 + k + 9) * 7) * s;
+        g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x - 1 * s, y - h * .6, x - 3 * s, y - h); g.moveTo(x, y); g.quadraticCurveTo(x + .5 * s, y - h * .7, x + .8 * s, y - h * 1.15); g.moveTo(x, y); g.quadraticCurveTo(x + 1.5 * s, y - h * .5, x + 3.5 * s, y - h * .8); g.stroke();
+      }
+    }
+    /* ---------- obstacles */
+    var KIND = { fence: { w: 62, h: 46 }, rock: { w: 50, h: 24 }, cactus: { w: 26, h: 70 }, weed: { w: 30, h: 30 } };
+    function spawnObs() {
+      var m = dist / 40, pool = ["fence", "rock", "fence", "rock"];
+      if (m > 80) pool.push("weed"); if (m > 150) pool.push("cactus", "cactus");
+      var k = pool[Math.floor(Math.random() * pool.length)];
+      obs.push({ k: k, x: W / s + 60, roll: 0 });
+      nextObs = speed * (.95 + Math.random() * .9) + 150 + (k === "cactus" ? 60 : 0);
+    }
+    function drawObs(o) {
+      var x = o.x * s, y = gy;
+      g.save(); g.translate(x, y); g.scale(s, s);
+      if (o.k === "fence") {
+        g.fillStyle = "#3b2414"; g.fillRect(-2, -50, 10, 50); g.fillRect(54, -50, 10, 50);
+        g.fillStyle = "#7a4f2c"; g.fillRect(0, -48, 6, 48); g.fillRect(56, -48, 6, 48);
+        g.fillRect(-4, -42, 70, 6); g.fillRect(-4, -26, 70, 6); g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(-4, -37, 70, 1.5); g.fillRect(-4, -21, 70, 1.5);
+      } else if (o.k === "rock") {
+        g.fillStyle = "#4a3b33"; g.beginPath(); g.moveTo(-2, 0); g.quadraticCurveTo(2, -22, 20, -25); g.quadraticCurveTo(44, -24, 52, 0); g.closePath(); g.fill();
+        g.fillStyle = "rgba(255,220,180,.18)"; g.beginPath(); g.moveTo(8, -12); g.quadraticCurveTo(14, -22, 24, -22); g.quadraticCurveTo(16, -16, 12, -8); g.closePath(); g.fill();
+      } else if (o.k === "cactus") {
+        g.fillStyle = "#33502e"; g.strokeStyle = "#1f3320"; g.lineWidth = 2;
+        rr(6, -72, 14, 72, 7); rr(-6, -46, 10, 26, 5); rr(-6, -26, 18, 8, 4); rr(18, -58, 10, 22, 5); rr(14, -40, 14, 8, 4);
+        g.strokeStyle = "rgba(255,255,255,.12)"; g.beginPath(); g.moveTo(13, -66); g.lineTo(13, -4); g.stroke();
+      } else {
+        var bob = Math.abs(Math.sin(o.roll * 1.6)) * 12;
+        g.translate(15, -15 - bob); g.rotate(-o.roll * 2.2); g.strokeStyle = "#a07a4a"; g.lineWidth = 1.6;
+        for (var i = 0; i < 9; i++) { g.beginPath(); g.ellipse(0, 0, 15, 8 + i % 3 * 3, i * .7, 0, 6.283); g.stroke(); }
+      }
+      g.restore();
+    }
+    function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fill(); g.stroke(); }
+    function drawApple(a) {
+      var x = a.x * s, y = gy - (a.h + Math.sin(clock * 3 + a.x * .02) * 4) * s, r = 7.5 * s;
+      g.fillStyle = "rgba(255,180,120,.25)"; g.beginPath(); g.arc(x, y, r * 2.1, 0, 6.283); g.fill();
+      g.fillStyle = "#d8322e"; g.beginPath(); g.arc(x - r * .3, y, r, 0, 6.283); g.arc(x + r * .3, y, r, 0, 6.283); g.fill();
+      g.fillStyle = "rgba(255,255,255,.45)"; g.beginPath(); g.arc(x - r * .45, y - r * .35, r * .28, 0, 6.283); g.fill();
+      g.strokeStyle = "#3b2414"; g.lineWidth = 1.6 * s; g.beginPath(); g.moveTo(x, y - r * .8); g.lineTo(x + r * .2, y - r * 1.5); g.stroke();
+      g.fillStyle = "#5c8a3a"; g.beginPath(); g.ellipse(x + r * .55, y - r * 1.3, r * .5, r * .22, -.5, 0, 6.283); g.fill();
+    }
+    /* ---------- Juniper (a bay mustang) and her rider, drawn facing right; ph = gallop phase */
+    function leg(hx, hy2, a1, a2, col, sock) {
+      var kx = hx + Math.sin(a1) * 24, ky = hy2 + Math.cos(a1) * 24, fx = kx + Math.sin(a1 + a2) * 26, fy = ky + Math.cos(a1 + a2) * 26;
+      g.strokeStyle = col; g.lineCap = "round"; g.lineWidth = 8; g.beginPath(); g.moveTo(hx, hy2); g.lineTo(kx, ky); g.stroke();
+      g.lineWidth = 6; g.beginPath(); g.moveTo(kx, ky); g.lineTo(fx, fy); g.stroke();
+      if (sock) { g.strokeStyle = "#efe6d6"; g.lineWidth = 6.4; g.beginPath(); g.moveTo(kx + (fx - kx) * .6, ky + (fy - ky) * .6); g.lineTo(fx, fy); g.stroke(); }
+      g.fillStyle = "#1c120c"; g.beginPath(); g.arc(fx, fy, 3.6, 0, 6.283); g.fill();
+    }
+    function legs(far) {
+      var cols = far ? "#5a2e16" : "#8a4a22", i;
+      var L = [[30, -50, 0, 1], [22, -50, .3, 1], [-30, -52, .55, -1], [-22, -52, .82, -1]];
+      for (i = far ? 0 : 1; i < 4; i += 2) {
+        var l = L[i], a1, a2, p = ph + l[2] * 6.283;
+        if (state === "ready") { a1 = Math.sin(p) * .18; a2 = l[3] * .12; }
+        else if (air) { a1 = l[3] > 0 ? -.75 : .8; a2 = l[3] > 0 ? 1.5 : -1.3; }
+        else { a1 = Math.sin(p) * .62; a2 = l[3] > 0 ? 1.1 * Math.max(0, Math.sin(p + 1.7)) : -1.1 * Math.max(0, Math.sin(p - 1.3)); }
+        leg(l[0], l[1], a1, a2, cols, !far && i === 3);
+      }
+    }
+    function horse(x, y) {
+      var bob = state === "run" && !air ? Math.sin(ph * 2) * 2.4 : state === "ready" ? Math.sin(clock * 2) * .8 : 0;
+      g.save(); g.translate(x, y); g.scale(s, s);
+      if (crash) { g.translate(30, 0); g.rotate(Math.min(.9, crash * 1.6)); g.translate(-30, 0); }
+      g.translate(0, -bob);
+      g.fillStyle = "rgba(0,0,0,.25)"; g.beginPath(); g.ellipse(6, hy + bob, Math.max(18, 52 - hy * .25), 6, 0, 0, 6.283); g.fill();
+      legs(true);
+      var tw = Math.sin(clock * 9) * 6;   // tail
+      g.strokeStyle = "#1e130d"; g.lineWidth = 8; g.lineCap = "round"; g.beginPath(); g.moveTo(-44, -70); g.quadraticCurveTo(-66, -72 + tw, -76, -46 + tw * 1.4); g.stroke();
+      g.fillStyle = "#8a4a22"; g.beginPath(); g.ellipse(0, -64, 47, 19, 0, 0, 6.283); g.fill();
+      g.fillStyle = "rgba(255,210,170,.12)"; g.beginPath(); g.ellipse(-4, -72, 36, 8, 0, 0, 6.283); g.fill();
+      g.fillStyle = "#8a4a22"; g.beginPath(); g.moveTo(26, -78); g.lineTo(50, -114); g.lineTo(66, -106); g.lineTo(46, -56); g.closePath(); g.fill();
+      g.save(); g.translate(72, -108); g.rotate(.55); g.beginPath(); g.ellipse(0, 0, 17, 8.5, 0, 0, 6.283); g.fill(); g.fillStyle = "#4a2410"; g.beginPath(); g.ellipse(12, 0, 6, 6.5, 0, 0, 6.283); g.fill(); g.restore();
+      g.fillStyle = "#6e3818"; g.beginPath(); g.moveTo(56, -120); g.lineTo(58, -132); g.lineTo(63, -119); g.closePath(); g.fill();
+      g.fillStyle = "#1c120c"; g.beginPath(); g.arc(68, -113, 1.8, 0, 6.283); g.fill();
+      g.strokeStyle = "#1e130d"; g.lineWidth = 7; g.beginPath(); g.moveTo(30, -80); g.quadraticCurveTo(42, -104 + tw * .3, 54, -118); g.stroke();
+      g.fillStyle = "#9b2d22"; g.beginPath(); g.moveTo(-22, -82); g.lineTo(14, -82); g.lineTo(12, -64); g.lineTo(-20, -64); g.closePath(); g.fill();
+      g.fillStyle = "#3b2414"; g.beginPath(); g.moveTo(-16, -84); g.quadraticCurveTo(-4, -92, 10, -84); g.lineTo(8, -78); g.lineTo(-14, -78); g.closePath(); g.fill();
+      legs(false);
+      // rider: long coat, wide hat, leaning into the run
+      var lean = state === "run" ? (air ? .1 : .32) : .05, flap = Math.sin(clock * 11) * (state === "run" ? 5 : 1.5);
+      g.save(); g.translate(-2, -86);
+      if (crash) { g.translate(crash * 60, -crash * 40); g.rotate(crash * 3); }
+      g.fillStyle = "#5a2a1c"; g.beginPath(); g.moveTo(-6, 2); g.lineTo(-34, 18 + flap); g.lineTo(-24, 22 + flap * .6); g.lineTo(2, 10); g.closePath(); g.fill();
+      g.strokeStyle = "#2a1a12"; g.lineWidth = 6; g.lineCap = "round"; g.beginPath(); g.moveTo(0, 0); g.lineTo(8, 20); g.lineTo(4, 30); g.stroke();
+      g.rotate(lean);
+      g.fillStyle = "#6b3424"; g.beginPath(); g.moveTo(-8, 2); g.lineTo(8, 2); g.lineTo(10, -36); g.lineTo(-4, -38); g.closePath(); g.fill();
+      g.strokeStyle = "#6b3424"; g.lineWidth = 5; g.beginPath(); g.moveTo(6, -32); g.lineTo(28, -18); g.lineTo(40, -14); g.stroke();
+      g.fillStyle = "#c08a62"; g.beginPath(); g.arc(4, -46, 7, 0, 6.283); g.fill();
+      g.fillStyle = "#2e1d14"; g.beginPath(); g.ellipse(4, -51, 15, 3.2, 0, 0, 6.283); g.fill(); g.fillRect(-3, -62, 14, 11);
+      g.fillStyle = "#9b2d22"; g.fillRect(-3, -54, 14, 2.5);
+      g.restore();
+      g.restore();
+    }
+    function puff(n) {
+      if (reduced()) return;
+      for (var i = 0; i < n; i++) dust.push({ x: HX - 30 * s + Math.random() * 10 * s, y: gy - Math.random() * 4 * s, vx: -(60 + Math.random() * 80) * s, vy: -(20 + Math.random() * 40) * s, life: .6 + Math.random() * .4, t: 0, r: (2 + Math.random() * 4) * s });
+    }
+
+    function draw() {
+      if (!W) return;
+      g.save();
+      if (shake > 0 && !reduced()) g.translate((Math.random() - .5) * shake * 8, (Math.random() - .5) * shake * 8);
+      var t = sky(); mesas(t);
+      hills(.18, 26, 40, mix([110, 50, 66], [26, 20, 40], Math.min(1, t / 2)));
+      hills(.42, 18, 18, mix([84, 40, 40], [22, 16, 28], Math.min(1, t / 2)));
+      ground(t);
+      fruit.forEach(drawApple); obs.forEach(drawObs);
+      dust.forEach(function (d) { g.fillStyle = "rgba(190,150,110," + (.45 * (1 - d.t / d.life)) + ")"; g.beginPath(); g.arc(d.x, d.y, d.r * (1 + d.t), 0, 6.283); g.fill(); });
+      horse(HX, gy - hy * s);
+      var v = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .75);
+      v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(10,4,8,.45)"); g.fillStyle = v; g.fillRect(0, 0, W, H);
+      g.restore();
+    }
+
+    function hit(o) {
+      var k = KIND[o.k], ox = o.x + (o.k === "cactus" ? 4 : 4), ow = k.w - 8, oh = k.h - 4, oy = o.k === "weed" ? Math.abs(Math.sin(o.roll * 1.6)) * 12 : 0;
+      var hx0 = HX / s - 30, hx1 = HX / s + 40, hb = hy + 6, ht = hy + 96;
+      return hx1 > ox && hx0 < ox + ow && hb < oy + oh && ht > oy;
+    }
+    function update(dt) {
+      clock += dt;
+      if (state === "ready") { dist += 60 * dt; ph += dt * 3; return; }
+      if (state === "over") { crash = Math.min(1, crash + dt * 2.2); shake = Math.max(0, shake - dt * 3); dust.forEach(function (d) { d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; }); dust = dust.filter(function (d) { return d.t < d.life; }); return; }
+      speed = Math.min(900, speed + 9 * dt);
+      var dx = speed * dt; dist += dx; ph += dt * (6 + speed / 90);
+      if (buffer > 0) buffer -= dt;
+      if (!air && buffer > 0) { vy = JV; air = true; holdT = 0; buffer = 0; puff(6); sfx("click"); }
+      if (air) {
+        var gr = holding && holdT < HOLD && vy > 0 ? G * .45 : G; holdT += dt;
+        vy -= gr * dt; hy += vy * dt;
+        if (hy <= 0) { hy = 0; vy = 0; air = false; puff(8); }
+      } else if (Math.random() < dt * 14) puff(1);
+      nextObs -= dx; if (nextObs <= 0) spawnObs();
+      nextFruit -= dx; if (nextFruit <= 0) { fruit.push({ x: W / s + 30, h: 40 + Math.random() * 120 }); nextFruit = 380 + Math.random() * 700; }
+      obs.forEach(function (o) { o.x -= dx / 1 + (o.k === "weed" ? 80 * dt : 0); o.roll += dt * (speed / 120); });
+      fruit.forEach(function (a) { a.x -= dx; });
+      obs = obs.filter(function (o) { return o.x > -120; });
+      for (var i = 0; i < obs.length; i++) if (hit(obs[i])) return over();
+      var hcx = HX / s + 60, hcy = hy + 100, bcx = HX / s, bcy = hy + 64;
+      fruit = fruit.filter(function (a) {
+        var d1 = Math.hypot(a.x - hcx, a.h - hcy), d2 = Math.hypot(a.x - bcx, a.h - bcy);
+        if (d1 < 30 || d2 < 42) { apples++; elApples.textContent = String(apples); sfx("hover"); return false; }
+        return a.x > -40;
+      });
+      dust.forEach(function (d) { d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; }); dust = dust.filter(function (d) { return d.t < d.life; });
+      elDist.textContent = String(Math.floor(dist / 40));
+    }
+    function frame(ts) {
+      raf = null;
+      var dt = last ? Math.min(.033, (ts - last) / 1000) : 0; last = ts;
+      if (!paused()) { update(dt); draw(); }
+      if (state === "run" || state === "over" || (state === "ready" && !reduced())) raf = requestAnimationFrame(frame);
+    }
+    function loop() { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } }
+
+    function start() {
+      state = "run"; speed = 360; dist = 0; apples = 0; obs = []; fruit = []; dust = []; nextObs = 520; nextFruit = 300;
+      hy = 0; vy = 0; air = false; holding = false; buffer = 0; crash = 0; shake = 0;
+      elDist.textContent = "0"; elApples.textContent = "0"; say.textContent = "";
+      card.hidden = true; endp.hidden = true; stage.classList.add("on"); stage.focus({ preventScroll: true });
+      sfx("open"); loop();
+    }
+    function over() {
+      state = "over"; shake = 1; crash = .01; puff(16); sfx("close"); stage.classList.remove("on");
+      var m = Math.floor(dist / 40), pts = m + apples * 15, i = Math.min(RL.length - 1, Math.floor(pts / 120)), nb = m > best;
+      if (nb) { best = m; try { localStorage.setItem("tasRide", String(m)); } catch (e) {} elBest.textContent = String(m); }
+      $("[data-ride-rank]", endp).textContent = RL[i]; $("[data-ride-rank-w]", endp).textContent = T(RW[i]);
+      var h = $("[data-ride-end-h]", endp), sub = $("[data-ride-end-s]", endp);
+      h.textContent = T("You rode {d} m.").replace("{d}", m);
+      sub.textContent = (nb && m > 0 ? T("New best!") + " " : "") + T("Apples: {n} · Best: {b} m").replace("{n}", apples).replace("{b}", best);
+      say.textContent = h.textContent + " " + sub.textContent;
+      setTimeout(function () { if (state !== "over") return; endp.hidden = false; h.focus({ preventScroll: true }); }, 900);
+    }
+    function jumpDown() { if (state !== "run") return; holding = true; buffer = .12; }
+    function jumpUp() { holding = false; }
+
+    $$("[data-ride-go]", box).forEach(function (b) { b.addEventListener("click", start); });
+    stage.addEventListener("pointerdown", function (e) { if (e.target.closest("a, button")) return; if (state === "run") { e.preventDefault(); jumpDown(); } });
+    window.addEventListener("pointerup", jumpUp); window.addEventListener("pointercancel", jumpUp);
+    doc.addEventListener("keydown", function (e) {
+      var k = e.key;
+      if (state === "run" && (k === " " || k === "ArrowUp" || k === "w" || k === "W")) { e.preventDefault(); if (!e.repeat) jumpDown(); }
+      else if (state !== "run" && doc.activeElement === stage && (k === "Enter" || k === " ")) { e.preventDefault(); start(); }
+    });
+    doc.addEventListener("keyup", function (e) { if (e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W") jumpUp(); });
+    doc.addEventListener("visibilitychange", function () { if (!doc.hidden) loop(); });
+    window.addEventListener("resize", size);
+    size(); loop();
+  })();
+
+  /* ===================================================== Lighthouse game (play.html; the 404 page has the Sundown ride since v3.11)
      The stage is dark; a lighthouse beam lights a circle around the pointer / finger / arrow keys.
      Six works hide in the dark — hold the light on one (or click it while lit) to collect it. */
   (function lighthouse() {
@@ -1030,7 +1297,7 @@
       var secs = (performance.now() - t0) / 1000, i;
       if (won) i = secs <= 12 ? 6 : secs <= 16 ? 5 : secs <= 21 ? 4 : secs <= 27 ? 3 : secs <= 34 ? 2 : 1;
       else i = got >= 5 ? 1 : 0;
-      $("[data-lh-rank]", endp).textContent = RL[i]; $("[data-lh-rank-w]", endp).textContent = RW[i];
+      $("[data-lh-rank]", endp).textContent = RL[i]; $("[data-lh-rank-w]", endp).textContent = T(RW[i]);
       var h = $("[data-lh-end-h]", endp), s = $("[data-lh-end-s]", endp), line = [fx("{n} of 6 found", got)];
       h.textContent = won ? T("All 6 found!") : T("Time’s up!");
       if (won) {

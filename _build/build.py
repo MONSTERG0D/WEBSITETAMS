@@ -61,6 +61,18 @@ def nav_current(f, cur):
 
 # ---------------------------------------------------------------- media
 M = "assets/media/"
+SD = "assets/img/sundown/"
+# Sundown Trail screenshots (v3.11): caption, alt text — what each capture shows
+SUNDOWN_SHOTS = [
+    ("Golden hour", "Sundown Trail: the rider walks through tall grass as the sun sets behind a stand of trees"),
+    ("Swimming at dusk", "Sundown Trail: the rider swims in a lake at sunset, a red barn and a fence on the shore"),
+    ("Riding Juniper", "Sundown Trail: the rider on Juniper, a bay mustang, crossing a dry field"),
+    ("A herd in every coat", "Sundown Trail: saddled horses in many coat colours on open grass"),
+    ("Dusk over the hills", "Sundown Trail: purple dusk over rolling hills and peaks"),
+    ("Light through the trees", "Sundown Trail: low sun breaking through dark trees around the rider"),
+    ("Horses by the hills", "Sundown Trail: a line of horses grazing below pine-covered hills"),
+    ("Juniper, saddled", "Sundown Trail: Juniper standing saddled in a valley, ready to mount"),
+]
 B = "assets/img/blender/"
 I = "assets/img/insp/"
 # slug, title, kind, label, orientation (v = vertical 9:16, h = 16:9 wide, t = 16:9 third), hls?
@@ -83,6 +95,8 @@ CLIPS2 = [
     ("ink-reveal", "Ink Reveal", "Animated render", "Render", "t", False),
 ]
 CLIP = {c[0]: c for c in CLIPS + CLIPS2}
+# Sundown Trail's in-game film (v3.11, from Aamir's "Timeline 1"): shown with the game on Work, not in the motion reel
+CLIP["sundown-trail"] = ("sundown-trail", "Sundown Trail — in-game film", "Test build · riding, rain, night", "2026", "h", False)
 HLS = {"money-follows": M + "money-follows/master.m3u8"}
 
 BLENDER = [
@@ -260,7 +274,7 @@ def header(current, p):
 
 UIS = [
     # key, interface name, music name, icon, swatches, blurb
-    ("riot", "Riot", "Electric Guitar", "guitar", ["#09090d", "#ff2b45", "#5b8cff", "#f1ece2"], "Loud, slashed, gothic."),
+    ("riot", "Riot", "Electric Guitar", "guitar", ["#09090d", "#ff7a1a", "#ff2b45", "#f1ece2"], "Loud, slashed, gothic."),
     ("noir", "Noir", "Smooth Jazz", "coffee", ["#0e1424", "#d4a24c", "#9a2a3a", "#f3e9d2"], "Midnight, brass, slow."),
     ("village", "Village", "Ambient Village", "trees", ["#efe6d2", "#5b7b4a", "#c8643b", "#2b2a26"], "Paper, moss, morning."),
 ]
@@ -461,16 +475,27 @@ def art_media(name, mode):
 # ---------------------------------------------------------------- the hero
 HERO_TAGS = [("clapperboard", "Motion"), ("box", "3D"), ("gamepad-2", "Games"), ("bot", "Robots"), ("code-xml", "Web")]
 
+def riot_char():
+    """v3.11: the Riot sticker girl, written into the page so her scarf, eyes, headphone light and blade can move
+    (and stop with reduced motion). Same drawing as assets/img/chars/riot.svg."""
+    svg = open(os.path.join(ROOT, "assets", "img", "chars", "riot.svg"), encoding="utf-8").read()
+    svg = re.sub(r"<title>.*?</title>\s*", "", svg, flags=re.S)
+    svg = re.sub(r'role="img" aria-label="[^"]*"', 'class="hero-char hc-riot" aria-hidden="true" focusable="false" width="360" height="760"', svg, count=1)
+    for i in ("ht", "wrap", "edge"):
+        svg = svg.replace(f'id="{i}"', f'id="rc-{i}"').replace(f"url(#{i})", f"url(#rc-{i})")
+    svg = re.sub(r"<!--.*?-->", "", svg, flags=re.S)
+    return re.sub(r"\n\s*\n", "\n", svg).strip()
+
 def hero():
     tags = "".join(f'<li>{ico(i)}<span>{t}</span></li>' for i, t in HERO_TAGS)
     return f'''<section class="hero" aria-labelledby="hero-t">
   <div class="hero-bg" aria-hidden="true">
     <video class="hero-vid" muted loop playsinline preload="none" data-src="{M}money-follows-loop.mp4" poster="{M}money-follows.webp"></video>
-    <div class="hero-scene hs-riot"><i class="moon"></i><i class="rose"></i><i class="tower"></i><i class="slash s1"></i><i class="slash s2"></i><i class="slash s3"></i><i class="clash"></i><span class="spray">TAS</span><span class="drip"></span><span class="ash">{"<i></i>" * 9}</span></div>
+    <div class="hero-scene hs-riot"><i class="moon"></i><i class="rose"></i><i class="slash s1"></i><i class="slash s2"></i><i class="slash s3"></i><i class="clash"></i><span class="spray">TAS</span><span class="drip"></span><span class="ash">{"<i></i>" * 9}</span></div>
     <div class="hero-scene hs-noir"><i class="spot"></i><i class="smoke"></i></div>
     <div class="hero-scene hs-village"><svg viewBox="0 0 1200 500" preserveAspectRatio="xMidYMax slice"><circle class="sunc" cx="640" cy="150" r="64"/><path class="hill h3" d="M0 330 Q200 250 420 310 T820 290 T1200 300 V500 H0Z"/><path class="hill h2" d="M0 380 Q260 300 520 370 T1000 350 T1200 360 V500 H0Z"/><path class="hill h1" d="M0 430 Q300 380 600 420 T1200 410 V500 H0Z"/><g class="birds"><path d="M300 60 q8 -8 16 0 q8 -8 16 0"/><path d="M350 36 q6 -6 12 0 q6 -6 12 0"/><path d="M262 44 q5 -5 10 0 q5 -5 10 0"/></g></svg></div>
   </div>
-  <img class="hero-char hc-riot" src="assets/img/chars/riot.svg" alt="" aria-hidden="true" width="360" height="760" decoding="async">
+  {riot_char()}
   <img class="hero-char hc-warm" src="assets/img/chars/village.svg" alt="" aria-hidden="true" width="360" height="760" decoding="async">
   <div class="wrap hero-in">
     <p class="hero-kicker label rv">{ico("map-pin")} B.Tech CSE · Tezpur University <span class="live">{ico("zap")} Open for freelance</span></p>
@@ -505,7 +530,7 @@ def build_home():
     stat_html = "".join(f'<li class="rv"><span class="st-i">{ico(i)}</span><b data-count="{n}">{n}</b><span class="label">{t}</span></li>' for i, n, t in stats)
     # v3.11: who, what and where in one line, and three works that show it, right under the hero
     feat = [("projects.html#reel", f"{M}meant-to-be-felt.webp", 1280, 720, "film", "Motion Reel 2026", "Motion · edits · grades", "14 films"),
-            ("projects.html#sundown-trail", "assets/img/sundown-trail-pause.webp", 780, 1040, "gamepad-2", "Sundown Trail", "Game · UI", "In development"),
+            ("projects.html#sundown-trail", f"{SD}st-1-sm.webp", 640, 400, "gamepad-2", "Sundown Trail", "Game · UI", "In development"),
             ("projects.html#echo-balancer", "assets/img/art-echo.webp", 1200, 900, "bot", "Echo Balancer", "Robotics · eYRC", "In progress")]
     feat_html = "".join(f'''<li class="rv{" rv-d" + str(k) if k else ""}"><a class="feat-c" href="{h}"><span class="feat-m"><img src="{img}" alt="" loading="lazy" decoding="async" width="{w}" height="{hh}"></span>
       <span class="feat-t"><span class="label">{ico(ic)} {kind}</span><b>{t}</b><span class="feat-s">{st}</span></span><span class="feat-go" aria-hidden="true">{ico("arrow-right")}</span></a></li>'''
@@ -531,7 +556,7 @@ def build_home():
   <div class="tiles">
     <a class="tile tile--wide rv" href="projects.html#reel">{video_tile_media("meant-to-be-felt")}<div class="tile-cap"><h3>{ico("film")} Motion Reel 2026</h3><span class="label">14 films</span></div></a>
     <a class="tile rv" href="projects.html#blender"><div class="tile-media wipe"><img src="{B}blender-2.webp" alt="Blender render of a pink donut beside a mug" loading="lazy" decoding="async" width="1600" height="900"></div><div class="tile-cap"><h3>{ico("box")} Blender Studies</h3><span class="label">3D</span></div></a>
-    <a class="tile rv rv-d1" href="projects.html#sundown-trail"><div class="tile-media wipe"><img src="assets/img/sundown-trail-pause.webp" alt="The paper-style pause menu from Sundown Trail" loading="lazy" decoding="async" width="780" height="1040"></div><div class="tile-cap"><h3>{ico("gamepad-2")} Sundown Trail</h3><span class="label badge-live">In dev</span></div></a>
+    <a class="tile rv rv-d1" href="projects.html#sundown-trail"><div class="tile-media wipe"><img src="{SD}st-1-sm.webp" srcset="{SD}st-1-sm.webp 640w, {SD}st-1.webp 1280w" sizes="(max-width: 520px) 100vw, 33vw" alt="Sundown Trail: the rider in tall grass at golden hour" loading="lazy" decoding="async" width="1280" height="800"></div><div class="tile-cap"><h3>{ico("gamepad-2")} Sundown Trail</h3><span class="label badge-live">In dev</span></div></a>
     <a class="tile rv" href="projects.html#echo-balancer">{art_media("echo", "art-night")}<div class="tile-cap"><h3>{ico("bot")} Echo Balancer</h3><span class="label badge-live">eYRC</span></div></a>
     <a class="tile rv rv-d1" href="projects.html#robotic-arm">{art_media("arm", "art-day")}<div class="tile-cap"><h3>{ico("cpu")} Arm Control Suite</h3><span class="label">Robotics</span></div></a>
     <a class="tile rv" href="projects.html#smart-bin">{art_media("bin", "art-night")}<div class="tile-cap"><h3>{ico("trees")} Smart Bin</h3><span class="label">SIH 2026</span></div></a>
@@ -727,11 +752,17 @@ def build_work():
   </div>
 </article>'''
 
+    # v3.11: screenshots from the game's test builds (assets/img/sundown/, cropped clean from Aamir's captures)
+    st_figs = "".join(f'''<figure class="rv"><img src="{SD}st-{k+1}.webp" srcset="{SD}st-{k+1}-sm.webp 640w, {SD}st-{k+1}.webp 1280w" sizes="(max-width: 760px) 50vw, 31vw" alt="{esc(alt)}" loading="lazy" decoding="async" width="1280" height="800"><figcaption>{esc(cap)}</figcaption></figure>'''
+                      for k, (cap, alt) in enumerate(SUNDOWN_SHOTS))
+    st_film = f'''<figure class="big st-film rv"><a class="clip-a" href="{M}sundown-trail.mp4" {play_attrs("sundown-trail")} aria-label="Play the Sundown Trail in-game film">{video_tile_media("sundown-trail")}<span class="play-ico" aria-hidden="true">{ico("play")}</span></a><figcaption>In-game film</figcaption></figure>'''
+    st_gal = f'''<div class="stgal-wrap"><h3 class="label stgal-h">{ico("image")} From the test builds</h3><div class="bgal stgal">{st_film}{st_figs}</div></div>'''
     m_sundown = mission("sundown-trail", "games", "02",
         '<img src="assets/img/sundown-trail-pause.webp" alt="Sundown Trail’s paper-journal pause menu: Resume, Save game, Load game, Settings, Quit to title" loading="lazy" decoding="async" width="780" height="1040">', "",
         "Sundown Trail", "gamepad-2", "A western, built one system at a time",
         "RDR2 made me want to build a world, not a level. Press Esc — this site’s menu is modelled on the game’s.",
-        [("flame", "Status", '<span class="badge-live">In development</span>'), ("layers", "Focus", "Game design · UI · Blender environments"), ("globe", "Platform", "Browser → Android &amp; iOS")], [], False)
+        [("flame", "Status", '<span class="badge-live">In development</span>'), ("layers", "Focus", "Game design · UI · Blender environments"), ("globe", "Platform", "Browser → Android &amp; iOS"),
+         ("gamepad-2", "Latest", "Part 5: horse riding — four gaits, mount and dismount, whistle, bond")], [], False)
     rest = mission("echo-balancer", "robotics software", "04", art("echo"), "art-night", "Echo Balancer", "bot", "e-Yantra Robotics Competition 2026–27",
         "Keep an unstable robot upright. PID first, then LQR — in CoppeliaSim.",
         [("flame", "Status", '<span class="badge-live">In progress</span>'), ("code-xml", "Stack", "Python · CoppeliaSim"), ("award", "Competition", "eYRC · IIT Bombay")], [], True)
@@ -786,6 +817,7 @@ def build_work():
     <div class="reel-grid">{clips2}</div>
   </article>
   {m_sundown}
+  {st_gal}
   <article class="mission mission--full" id="blender" data-tags="3d">
     <div class="s-head"><p class="label">Mission 03</p><h2 class="h-xl split-words">Blender <em>Studies</em></h2><p class="muted rv">The donut, a mug, a walnut table — and one lamp moved a hundred times.</p></div>
     <div class="bgal">{figs}</div>
@@ -1431,8 +1463,57 @@ def build_game(path, p):
     else:
         page(path, "Lighthouse game", "A tiny side quest: move the lighthouse beam and find six of THE AAMIR SHEIKH’s works hidden in the dark.", body, current="play.html")
 
+def build_ride404():
+    """v3.11: the 404 page is a small Sundown Trail ride — Juniper and her rider gallop home at sunset.
+    The game itself is in main.js ("Sundown ride"); the lighthouse game stays on play.html."""
+    p = "/"
+    body = f'''<section class="wrap ride" data-ride>
+  <div class="ride-stage" data-ride-stage tabindex="0" role="group" aria-label="Sundown Trail ride" aria-describedby="ride-help">
+    <canvas class="ride-cv" data-ride-canvas aria-hidden="true"></canvas>
+    <div class="ride-hud" aria-hidden="true">
+      <span class="pill">{ico("map-pin")} <b data-ride-dist data-no-i18n>0</b> m</span>
+      <span class="pill">{ico("apple")} <b data-ride-apples data-no-i18n>0</b></span>
+      <span class="pill">{ico("trophy")} <span>Best</span> <b data-ride-best data-no-i18n>—</b></span>
+    </div>
+    <div class="ride-panel" data-ride-card>
+      <div>
+        <p class="label">{ico("skull")} Error 404</p>
+        <h1 class="h-xl">Lost on the trail.</h1>
+        <p class="lead">This page rode off into the sunset.</p>
+        <p class="lead">Ride Juniper home: jump the fences, rocks and cacti, and grab the apples on the way.</p>
+        <div class="m-links">
+          <button type="button" class="btn btn--solid" data-ride-go>{ico("play")} Ride</button>
+          <a class="btn" href="{p}index.html">{ico("house")} Find the pack</a>
+          <a class="btn" href="{p}projects.html#sundown-trail">{ico("gamepad-2")} About Sundown Trail</a>
+        </div>
+        <p class="mini" id="ride-help">Space, the up arrow or a tap jumps. Hold it to jump higher.</p>
+      </div>
+    </div>
+    <div class="ride-panel" data-ride-end hidden>
+      <div>
+        <p class="lh-rank" aria-hidden="true"><b data-ride-rank>D</b><span data-ride-rank-w>Dull</span></p>
+        <h2 class="h-l" data-ride-end-h tabindex="-1" data-no-i18n></h2>
+        <p class="lead" data-ride-end-s></p>
+        <div class="m-links">
+          <button type="button" class="btn btn--solid" data-ride-go>{ico("rotate-ccw")} Ride again</button>
+          <a class="btn" href="{p}index.html">{ico("house")} Find the pack</a>
+          <a class="btn" href="{p}projects.html">{ico("clapperboard")} See all work</a>
+        </div>
+      </div>
+    </div>
+    <p class="sr" role="status" aria-live="polite" data-ride-say></p>
+  </div>
+  <p class="mini muted ride-more">{ico("lighthouse")} Prefer the dark? <a class="link" href="{p}play.html">Play the lighthouse game</a></p>
+</section>'''
+    doc = (head("Lost", "Page not found. Ride Juniper home across the Sundown Trail at sunset: jump the fences and grab the apples.", "404.html", p).replace("<title>", '<meta name="robots" content="noindex">\n<title>', 1)
+           + "<body>\n" + header("", p) + f'<main id="main" tabindex="-1">{body}</main>\n' + footer(p)
+           + pause_menu("", p) + settings_panel() + attract(p) + "</body>\n</html>\n")
+    doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
+    with open(os.path.join(ROOT, "404.html"), "w", encoding="utf-8") as f: f.write(doc)
+    print("wrote 404.html")
+
 def build_404():
-    build_game("404.html", "/")
+    build_ride404()
     build_game("play.html", "")
 
 def write_sitemap():
