@@ -19,7 +19,7 @@ EMAIL = "ak4418561@gmail.com"
 WHATSAPP = "918082285886"          # +91 80822 85886 (wa.me format, no +)
 GITHUB = "https://github.com/MONSTERG0D"
 INSTAGRAM = [("the_aamir_sheikh", "https://www.instagram.com/the_aamir_sheikh/"), ("stry.tas", "https://www.instagram.com/stry.tas/")]
-FONTS = ("https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600"
+FONTS = ("https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600&family=Cinzel:wght@700"
          "&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap")
 
 def esc(s): return html.escape(s, quote=True)
@@ -159,6 +159,29 @@ BOOT = ("<script>(function(){var d=document.documentElement,s={};try{s=JSON.pars
         "var L=s.lang||'en';d.setAttribute('lang',L);d.setAttribute('data-lang',L);if(L==='ar')d.setAttribute('dir','rtl');"
         "if(s.text)d.style.fontSize=s.text+'%';if(s.bright&&s.bright!=100)d.style.setProperty('--bright',s.bright/100)})()</script>")
 
+# v3.11: who this site belongs to, in the form search engines read (home page only). Facts from this file only.
+JSONLD = '<script type="application/ld+json">' + json.dumps({
+    "@context": "https://schema.org",
+    "@graph": [
+        {"@type": "Person", "@id": SITE + "/#person", "name": BRAND, "url": SITE + "/", "email": "mailto:" + EMAIL,
+         "image": SITE + "/assets/img/og.jpg",
+         "jobTitle": "Motion designer, 3D artist and game developer",
+         "description": "B.Tech Computer Science student at Tezpur University: motion design, 3D, games, robotics and web.",
+         "affiliation": {"@type": "CollegeOrUniversity", "name": "Tezpur University"},
+         "address": {"@type": "PostalAddress", "addressLocality": "Tezpur", "addressRegion": "Assam", "addressCountry": "IN"},
+         "knowsAbout": ["Motion design", "Video editing", "Colour grading", "3D modelling", "Blender", "Game development", "Robotics", "Web development"],
+         "sameAs": [GITHUB] + [u for _, u in INSTAGRAM]},
+        {"@type": "WebSite", "@id": SITE + "/#website", "name": BRAND, "url": SITE + "/", "publisher": {"@id": SITE + "/#person"},
+         "inLanguage": ["en", "de", "fr", "ja", "es", "ru", "ar", "zh", "ko"]},
+    ]}, ensure_ascii=False, separators=(",", ":")) + "</script>\n"
+
+I18N_LANGS = ("de", "fr", "ja", "es", "ru", "ar", "zh", "ko")
+# Starts fetching the visitor's language file while the page is still being read; main.js runs once it is in.
+I18N_BOOT = ("(function(){var l=document.documentElement.getAttribute('data-lang'),v=window.TAS_I18V;if(!l||!v||!v[l])return;"
+             "var k=document.createElement('link');k.rel='preload';k.as='script';k.href=window.TAS_ROOT+'assets/js/i18n/'+l+'.js?v='+v[l];document.head.appendChild(k)})()")
+def i18n_versions():
+    return json.dumps({c: ver(f"assets/js/i18n/{c}.js") for c in I18N_LANGS}, separators=(",", ":"))
+
 _VER = {}
 def ver(rel):
     """A short fingerprint of a file's contents, added to its address (style.css?v=…). Browsers may keep
@@ -189,15 +212,15 @@ def head(title, desc, path, p, scripts=()):
 <meta property="og:url" content="{url}">
 <meta property="og:image" content="{SITE}/assets/img/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="{p}assets/img/favicon.svg" type="image/svg+xml">
+{JSONLD if path == "index.html" else ""}<link rel="icon" href="{p}assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{p}assets/img/apple-touch-icon.png">
 <link rel="stylesheet" href="{p}assets/css/style.css?v={ver("assets/css/style.css")}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="{FONTS}" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="{FONTS}"></noscript>
-<script>window.TAS_ROOT="{p}";</script>
-<script src="{p}assets/js/i18n.js?v={ver("assets/js/i18n.js")}" defer></script>
+<script>window.TAS_ROOT="{p}";window.TAS_I18V={i18n_versions()};</script>
+<script>{I18N_BOOT}</script>
 {"".join('<script src="' + p + 'assets/js/' + js + '?v=' + ver("assets/js/" + js) + '" defer></script>' + chr(10) for js in scripts)}<script src="{p}assets/js/main.js?v={ver("assets/js/main.js")}" defer></script>
 </head>
 '''
@@ -237,7 +260,7 @@ def header(current, p):
 
 UIS = [
     # key, interface name, music name, icon, swatches, blurb
-    ("riot", "Riot", "Electric Guitar", "guitar", ["#0b0b0d", "#ff0054", "#9eff00", "#f4f1ea"], "Loud, slashed, neon."),
+    ("riot", "Riot", "Electric Guitar", "guitar", ["#09090d", "#ff2b45", "#5b8cff", "#f1ece2"], "Loud, slashed, gothic."),
     ("noir", "Noir", "Smooth Jazz", "coffee", ["#0e1424", "#d4a24c", "#9a2a3a", "#f3e9d2"], "Midnight, brass, slow."),
     ("village", "Village", "Ambient Village", "trees", ["#efe6d2", "#5b7b4a", "#c8643b", "#2b2a26"], "Paper, moss, morning."),
 ]
@@ -388,8 +411,11 @@ def page(path, title, desc, body, current=None, depth=0, home=False, noindex=Fal
     p = "../" * depth
     cls = ' class="home"' if home else ""
     if primary_of(current or path) == "purpose.html": body = about_nav(current or path, p) + body
-    doc = (head(title, desc, path, p, scripts) + f"<body{cls}>\n" + header(current or path, p) + pause_menu(current or path, p)
-           + settings_panel() + attract(p) + (intro() if home else "") + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + extra + "</body>\n</html>\n")
+    # v3.11: the dialogs (menu, settings, screensaver, intro) come after the page, so the page's own h1 is the first
+    # heading in the outline; they are fixed on screen and hidden until opened, so nothing moves visually.
+    doc = (head(title, desc, path, p, scripts) + f"<body{cls}>\n" + header(current or path, p)
+           + f'<main id="main" tabindex="-1">\n{body}\n</main>\n' + footer(p) + pause_menu(current or path, p)
+           + settings_panel() + attract(p) + (intro() if home else "") + extra + "</body>\n</html>\n")
     doc = re.sub(r"</em>([.,?!])", r"\1</em>", doc)
     if noindex: doc = doc.replace("<title>", '<meta name="robots" content="noindex">\n<title>', 1)
     out = os.path.join(ROOT, path)
@@ -440,7 +466,7 @@ def hero():
     return f'''<section class="hero" aria-labelledby="hero-t">
   <div class="hero-bg" aria-hidden="true">
     <video class="hero-vid" muted loop playsinline preload="none" data-src="{M}money-follows-loop.mp4" poster="{M}money-follows.webp"></video>
-    <div class="hero-scene hs-riot"><i class="slash s1"></i><i class="slash s2"></i><i class="slash s3"></i><span class="spray">TAS</span><span class="drip"></span></div>
+    <div class="hero-scene hs-riot"><i class="moon"></i><i class="rose"></i><i class="tower"></i><i class="slash s1"></i><i class="slash s2"></i><i class="slash s3"></i><i class="clash"></i><span class="spray">TAS</span><span class="drip"></span><span class="ash">{"<i></i>" * 9}</span></div>
     <div class="hero-scene hs-noir"><i class="spot"></i><i class="smoke"></i></div>
     <div class="hero-scene hs-village"><svg viewBox="0 0 1200 500" preserveAspectRatio="xMidYMax slice"><circle class="sunc" cx="640" cy="150" r="64"/><path class="hill h3" d="M0 330 Q200 250 420 310 T820 290 T1200 300 V500 H0Z"/><path class="hill h2" d="M0 380 Q260 300 520 370 T1000 350 T1200 360 V500 H0Z"/><path class="hill h1" d="M0 430 Q300 380 600 420 T1200 410 V500 H0Z"/><g class="birds"><path d="M300 60 q8 -8 16 0 q8 -8 16 0"/><path d="M350 36 q6 -6 12 0 q6 -6 12 0"/><path d="M262 44 q5 -5 10 0 q5 -5 10 0"/></g></svg></div>
   </div>
@@ -477,7 +503,20 @@ def build_home():
     chapters = "".join(f'<li class="rv"><a href="{f}"><span class="num">{r}</span><span class="t">{ico(icon)} {t}</span><span class="d">{d}</span></a></li>' for f, l, r, t, d, icon in CHAPTERS)
     stats = [("film", "14", "films cut"), ("box", "5", "Blender studies"), ("bot", "3", "robots in progress"), ("gamepad-2", "1", "western in dev")]
     stat_html = "".join(f'<li class="rv"><span class="st-i">{ico(i)}</span><b data-count="{n}">{n}</b><span class="label">{t}</span></li>' for i, n, t in stats)
+    # v3.11: who, what and where in one line, and three works that show it, right under the hero
+    feat = [("projects.html#reel", f"{M}meant-to-be-felt.webp", 1280, 720, "film", "Motion Reel 2026", "Motion · edits · grades", "14 films"),
+            ("projects.html#sundown-trail", "assets/img/sundown-trail-pause.webp", 780, 1040, "gamepad-2", "Sundown Trail", "Game · UI", "In development"),
+            ("projects.html#echo-balancer", "assets/img/art-echo.webp", 1200, 900, "bot", "Echo Balancer", "Robotics · eYRC", "In progress")]
+    feat_html = "".join(f'''<li class="rv{" rv-d" + str(k) if k else ""}"><a class="feat-c" href="{h}"><span class="feat-m"><img src="{img}" alt="" loading="lazy" decoding="async" width="{w}" height="{hh}"></span>
+      <span class="feat-t"><span class="label">{ico(ic)} {kind}</span><b>{t}</b><span class="feat-s">{st}</span></span><span class="feat-go" aria-hidden="true">{ico("arrow-right")}</span></a></li>'''
+        for k, (h, img, w, hh, ic, t, kind, st) in enumerate(feat))
     body = hero() + f'''
+<section class="wrap feat-strip" aria-labelledby="feat-h">
+  <p class="who rv">Motion designer, 3D artist and game developer — a computer science student at Tezpur University, Assam.</p>
+  <p class="now-b rv"><i class="now-dot" aria-hidden="true"></i><span>Currently building:</span> <a class="link" href="projects.html#sundown-trail">Sundown Trail</a> · <a class="link" href="projects.html#robotic-arm">Arm Control Suite</a> · <a class="link" href="projects.html#echo-balancer">Echo Balancer</a></p>
+  <h2 class="label feat-h" id="feat-h">{ico("sparkles")} Featured</h2>
+  <ul class="feat">{feat_html}</ul>
+</section>
 <div class="marquee" aria-hidden="true"><div><span>Design is like a game</span><span>and I like to play</span><span>Create something new</span><span>Text isn’t just text</span><span>run with the pack</span></div><div><span>Design is like a game</span><span>and I like to play</span><span>Create something new</span><span>Text isn’t just text</span><span>run with the pack</span></div></div>
 
 <section class="reel" aria-label="Showreel">
@@ -642,10 +681,10 @@ def build_skills():
         extra = ""
         if imgs:
             figs = "".join(f'<figure class="{"big" if k == 0 else ("sq" if k == 1 else "")} rv"><img src="../{B}{f}" alt="{esc(next(b[2] for b in BLENDER if b[0]==f))}" loading="lazy" decoding="async" width="1600" height="900"><figcaption>{esc(next(b[1] for b in BLENDER if b[0]==f))}</figcaption></figure>' for k, f in enumerate(imgs))
-            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><p class="label">{ico("image")} Renders</p></div><div class="bgal">{figs}</div></section>'
+            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><h2 class="label">{ico("image")} Renders</h2></div><div class="bgal">{figs}</div></section>'
         if seen:
             clips = "".join(clip_html(CLIP[c], p="../") for c in seen)
-            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><p class="label">{ico("film")} Proof of work</p></div><div class="reel-grid">{clips}</div></section>'
+            extra += f'<section class="wrap section cv" style="padding-top:0"><div class="s-head"><h2 class="label">{ico("film")} Proof of work</h2></div><div class="reel-grid">{clips}</div></section>'
         prev = SKILLS[i - 1]; nxt = SKILLS[(i + 1) % len(SKILLS)]
         body = f'''<section class="wrap page-head">
   <span class="big-num" aria-hidden="true">{i+1:02d}</span>
@@ -719,13 +758,23 @@ def build_work():
         ("06", "Smart Bin", "trees", "IoT · SIH 2026", "2026", "#smart-bin", "assets/img/art-bin.webp"),
         ("07", "90 Day Progress", "trophy", "Software · React", "Live", "#ninety-days", "assets/img/art-ninety.webp"),
     ]
-    ptable = "".join(f'<li class="rv"><a href="{h}" data-peek="{img}"><span class="n">{n}</span><span class="t">{ico(ic)} {t}</span><span class="k">{k}</span><span class="y">{y}</span><span class="ar">{ico("arrow-right")}</span></a></li>' for n, t, ic, k, y, h, img in index_rows)
+    ptable = "".join(f'<li class="rv"><a href="{h}" data-peek="{img}"><span class="n">{n}</span><span class="t">{ico(ic)} <bdi>{t}</bdi></span><span class="k">{k}</span><span class="y">{y}</span><span class="ar">{ico("arrow-right")}</span></a></li>' for n, t, ic, k, y, h, img in index_rows)
     filters = [("all", "All", "layers"), ("motion", "Motion", "film"), ("3d", "3D", "box"), ("games", "Games", "gamepad-2"), ("robotics", "Robotics", "bot"), ("software", "Software", "code-xml")]
     fhtml = "".join(f'<button type="button" data-filter="{k}" aria-pressed="{"true" if k == "all" else "false"}">{ico(i)} {t}</button>' for k, t, i in filters)
 
+    # v3.11: when each mission happened, from the facts above only (years, competitions, status)
+    tl = [("Earlier", "", [("#reel", "Edits, grades & 3D", "")]),
+          ("2026", "", [("#reel", "Motion Reel 2026", "14 films"), ("#blender", "Blender Studies", "3D"), ("#smart-bin", "Smart Bin", "SIH 2026"), ("#ninety-days", "90 Day Progress", "Live")]),
+          ("Now", " mtl-now", [("#sundown-trail", "Sundown Trail", "In development"), ("#robotic-arm", "Arm Control Suite", "In development"), ("#echo-balancer", "Echo Balancer", "eYRC 2026–27")])]
+    tl_html = "".join(f'''<li class="mtl-y{cls} rv"><span class="mtl-k">{k}</span><ul>{"".join(f'<li><a href="{h}"><b><bdi>{esc(t)}</bdi></b>{f"<span>{esc(st)}</span>" if st else ""}</a></li>' for h, t, st in items)}</ul></li>'''
+                      for k, cls, items in tl)
+    # v3.11: the missions as a small terminal: type help, ls, open 2 … (main.js); without JavaScript it is a plain list
+    term_ls = "".join(f'<li><a href="{h}">{n}  {esc(t)}</a></li>' for n, t, ic, k, y, h, img in index_rows)
     body = page_head("IV", "Missions", "The missions <em>log.</em>", "Hover to preview. Click to watch in full quality, with sound.", "clapperboard")
     body += f'''<section class="wrap" style="padding-bottom:clamp(40px,6vw,80px)">
   <ul class="ptable">{ptable}</ul>
+  <h2 class="label mtl-h">{ico("clock")} Mission timeline</h2>
+  <ol class="mtl">{tl_html}</ol>
 </section>
 <div class="peek" aria-hidden="true"><img alt=""></div>
 <section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
@@ -742,6 +791,15 @@ def build_work():
     <div class="bgal">{figs}</div>
   </article>
   {rest}
+  <section class="pterm rv" aria-labelledby="pterm-h" data-pterm>
+    <div class="pterm-bar"><i></i><i></i><i></i><h2 id="pterm-h" class="pterm-t">missions.log</h2></div>
+    <div class="pterm-out" role="log" aria-live="polite" data-pterm-out>
+      <p><span class="pterm-p" aria-hidden="true">aamir@tas:~$</span> ls missions</p>
+      <ul class="pterm-ls">{term_ls}</ul>
+      <p class="pterm-hint" data-pterm-hint hidden>Type help, ls or open 2 — then press Enter.</p>
+    </div>
+    <form class="pterm-in" data-pterm-form hidden><label class="pterm-p" for="pterm-cmd">aamir@tas:~$</label><input id="pterm-cmd" name="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-label="Terminal command" data-no-i18n></form>
+  </section>
 </section>
 <div class="rank" aria-hidden="true"><b>D</b><span>Dull</span></div>''' + chapter_nav("projects.html", "")
     page("projects.html", "Work", "Projects by THE AAMIR SHEIKH: a 2026 motion reel, Blender 3D studies, Sundown Trail, eYRC Echo Balancer, robotic arm software, SIH Smart Bin and 90 Day Progress. Chapter IV.", body)
@@ -782,11 +840,14 @@ INSP_ANIME = [
     ("parasyte", "Parasyte -the maxim-", "Anime · 2014", "Change from the inside is still change.", "w6", "zoom"),
 ]
 
+# how wide each panel is on screen, so phones and small windows fetch the 640px copy (v3.11)
+IP_SIZES = {"w12": "(max-width: 760px) 100vw, 92vw", "w8": "(max-width: 760px) 100vw, 62vw", "w6": "(max-width: 760px) 100vw, 46vw", "w4": "(max-width: 760px) 100vw, 31vw"}
+
 def insp_panel(k, title, meta, line, size, motion, serif=False, id_=""):
     idattr = f' id="{id_}"' if id_ else ""
     h = f'<h3 class="serif-i">{title}</h3>' if serif else f"<h3>{title}</h3>"
     return f'''<article class="ipanel {size} m-{motion} rv"{idattr}>
-  <div class="ip-img"><img src="{I}{k}.webp" alt="" loading="lazy" decoding="async" width="1200" height="800"></div>
+  <div class="ip-img"><img src="{I}{k}.webp" srcset="{I}{k}-sm.webp 640w, {I}{k}.webp 1200w" sizes="{IP_SIZES.get(size, "50vw")}" alt="" loading="lazy" decoding="async" width="1200" height="800"></div>
   <div class="ip-fx" aria-hidden="true"></div>
   <div class="ip-cap"><p class="label">{meta}</p>{h}<p class="take">“{line}”</p></div>
 </article>'''
@@ -796,10 +857,10 @@ def build_inspirations():
     films = "".join(insp_panel(*x, serif=True) for x in INSP_FILMS)
     anim = "".join(insp_panel(*x) for x in INSP_ANIME)
     wolves = f'''<article class="ipanel w12 tall m-pan wolfpanel rv" id="wolves">
-  <div class="ip-img"><img src="{I}wolves.webp" alt="A pack of wolves walking through snowy forest" loading="lazy" decoding="async" width="1600" height="1000"></div>
+  <div class="ip-img"><img src="{I}wolves.webp" srcset="{I}wolves-sm.webp 640w, {I}wolves.webp 1200w" sizes="(max-width: 760px) 100vw, 92vw" alt="A pack of wolves walking through snowy forest" loading="lazy" decoding="async" width="1600" height="1000"></div>
   <div class="ip-fx" aria-hidden="true"></div>
   <div class="ip-cap"><p class="label">{ico("heart")} 00 · The pack · always</p>
-    <h3 class="serif-i wolf-h">Wolves.</h3>
+    <h2 class="serif-i wolf-h">Wolves.</h2>
     <blockquote>“For the strength of the Pack is the Wolf, and the strength of the Wolf is the Pack.”<cite>Rudyard Kipling · 1894</cite></blockquote></div>
 </article>'''
     people = f'''
@@ -862,7 +923,7 @@ def svc_row(iid, it):
             f'<span class="svc-t"><span>{esc(t["name"])}</span><span class="svc-tp" data-tier-price="{t["min"]}-{t["max"]}" data-no-i18n>₹{inr(t["min"])}–{inr(t["max"])}</span></span>' for t in it["tiers"]) + "</span>"
     return (f'<li><button type="button" class="svc-r" data-order="{iid}" aria-haspopup="dialog" aria-controls="osheet">'
             f'<span class="svc-top"><span class="svc-n">{esc(it["name"])}</span><span class="svc-dots" aria-hidden="true"></span>'
-            f'<span class="svc-p" data-price="{iid}" data-no-i18n>{price_text(it)}</span><span class="svc-go" aria-hidden="true">{ico("arrow-right")}</span></span>'
+            f'<span class="svc-pg"><span class="svc-p" data-price="{iid}" data-no-i18n>{price_text(it)}</span><span class="svc-go" aria-hidden="true">{ico("arrow-right")}</span></span></span>'
             f'{sub}{tiers}</button></li>')
 
 TIMING_CHIP = {"asap": "×2", "week": None, "month": "−5%", "flex": None}
@@ -903,7 +964,7 @@ def build_services():
     cards = ""
     for gid, gname, icon in CAT.GROUPS:
         rows = "".join(svc_row(iid, items[iid]) for iid in CATD["order"] if items[iid]["g"] == gid)
-        cards += (f'<li class="svc rv"><span class="svc-i">{ico(icon)}</span><h3>{esc(gname)}</h3><ul class="svc-l">{rows}</ul>'
+        cards += (f'<li class="svc rv"><span class="svc-i">{ico(icon)}</span><h2>{esc(gname)}</h2><ul class="svc-l">{rows}</ul>'
                   f'<a class="btn btn--small" href="order.html?want={gid}">{ico("shopping-bag")} Custom order</a></li>')
     timing = [("ASAP", "×2", "Double the price."), ("1 week", "×1–1.5", "I confirm the price: the base price or up to ×1.5."),
               ("2–4 weeks", "−5%", "5% off."), ("Flexible", "?", "We agree on it together.")]
@@ -951,11 +1012,12 @@ def build_order():
     stars = "".join(f'<label class="star"><input type="radio" name="rating" value="{n}"><span aria-hidden="true">{ico("star")}</span><span class="sr">{n} star{"s" if n > 1 else ""}</span></label>' for n in range(1, 6))
     fb_like = "".join(f'<label class="chip"><input type="checkbox" name="liked" value="{b}"><span>{b}</span></label>' for b in ["Design", "Videos", "Music", "Interfaces", "Accessibility", "Speed", "Story"])
     acct_btn = '\n  <button type="submit" class="btn" data-send="account">' + ico("user-round") + ' Send to my account</button>'
+    status_p = '<p class="form-status" role="status" aria-live="polite"></p>'
     send_btns = lambda kind: f'''<div class="send-row">
   <button type="submit" class="btn btn--solid" data-send="whatsapp">{ico("message-circle")} Send on WhatsApp</button>
   <button type="submit" class="btn" data-send="email">{ico("mail")} Send to Gmail</button>{acct_btn if kind == "order" else ""}
 </div>
-<p class="form-status" role="status" aria-live="polite"></p>'''
+{"" if kind == "order" else status_p}'''
     body = page_head("VII", "Order &amp; feedback", "Pick it. <em>Send it.</em>", "Tap what you want. It arrives on my WhatsApp and Gmail, neatly formatted.", "shopping-bag")
     body += f'''<section class="wrap" style="padding-bottom:clamp(48px,8vw,120px)">
   <div class="tabs" role="tablist" aria-label="Form type">
@@ -964,24 +1026,37 @@ def build_order():
   </div>
 
   <form class="oform" id="p-order" role="tabpanel" aria-labelledby="tab-order" data-form="order" novalidate>
-    <div class="step-h"><b>1</b><h2>What do you want?</h2><p class="mini muted">Pick as many as you like.</p></div>
-    <div class="ogs">{groups}</div>
-
-    <div class="step-h"><b>2</b><h2>Like any of these?</h2><p class="mini muted">Optional — tap a film you want something similar to.</p></div>
-    <div class="chips chips--img">{likes}</div>
-
-    <div class="step-h"><b>3</b><h2>Budget &amp; timing</h2></div>
-    <fieldset class="og"><legend>{ico("shopping-bag")} Budget</legend><div class="chips">{budget}</div></fieldset>
-    <fieldset class="og"><legend>{ico("clock")} When</legend><div class="chips">{when}</div></fieldset>
-
-    <div class="step-h"><b>4</b><h2>About you</h2></div>
-    <div class="fields">
-      <label class="fld"><span>Name *</span><input name="name" autocomplete="name" required></label>
-      <label class="fld"><span>Phone or email *</span><input name="contact" autocomplete="email" required></label>
-      <label class="fld wide"><span>Anything else?</span><textarea name="details" rows="4" placeholder="Links, ideas, deadline…"></textarea></label>
+    <ol class="wiz-steps" aria-label="Steps">
+      <li><button type="button" data-wiz-to="1" aria-current="step"><b>1</b><span>Service</span></button></li>
+      <li><button type="button" data-wiz-to="2"><b>2</b><span>Details</span></button></li>
+      <li><button type="button" data-wiz-to="3"><b>3</b><span>Review and send</span></button></li>
+    </ol>
+    <div class="wiz-p" data-wiz="1">
+      <div class="step-h"><b>1</b><h2 tabindex="-1">What do you want?</h2><p class="mini muted">Pick as many as you like.</p></div>
+      <div class="ogs">{groups}</div>
+      <div class="step-h step-h--sub"><h3>Like any of these?</h3><p class="mini muted">Optional — tap a film you want something similar to.</p></div>
+      <div class="chips chips--img">{likes}</div>
+      <div class="wiz-nav"><button type="button" class="btn btn--solid" data-wiz-next>Next {ico("arrow-right")}</button></div>
     </div>
-    <div class="summary" aria-live="polite"><p class="label">{ico("check")} Your order</p><pre data-summary>Nothing picked yet.</pre></div>
-    {send_btns("order")}
+    <div class="wiz-p" data-wiz="2">
+      <div class="step-h"><b>2</b><h2 tabindex="-1">Budget, timing and you</h2></div>
+      <fieldset class="og"><legend>{ico("shopping-bag")} Budget</legend><div class="chips">{budget}</div></fieldset>
+      <fieldset class="og"><legend>{ico("clock")} When</legend><div class="chips">{when}</div></fieldset>
+      <div class="fields">
+        <label class="fld"><span>Name *</span><input name="name" autocomplete="name" required></label>
+        <label class="fld"><span>Phone or email *</span><input name="contact" autocomplete="email" required></label>
+        <label class="fld wide"><span>Anything else?</span><textarea name="details" rows="4" placeholder="Links, ideas, deadline…"></textarea></label>
+      </div>
+      <div class="wiz-nav"><button type="button" class="btn" data-wiz-back>{ico("arrow-left")} Back</button><button type="button" class="btn btn--solid" data-wiz-next>Next {ico("arrow-right")}</button></div>
+    </div>
+    <div class="wiz-p" data-wiz="3">
+      <div class="step-h"><b>3</b><h2 tabindex="-1">Check it, then send it</h2></div>
+      <div class="summary" aria-live="polite"><p class="label">{ico("check")} Your order</p><pre data-summary>Nothing picked yet.</pre></div>
+      {send_btns("order")}
+      <p class="mini muted wiz-prv">{ico("shield-check")} Your details go only to me: on WhatsApp, in Gmail or in your account here. <a class="link" href="privacy.html">How I handle your data</a></p>
+      <div class="wiz-nav"><button type="button" class="btn" data-wiz-back>{ico("arrow-left")} Back</button></div>
+    </div>
+    {status_p}
   </form>
 
   <form class="oform" id="feedback" role="tabpanel" aria-labelledby="tab-fb" data-form="feedback" hidden novalidate>
@@ -1378,14 +1453,18 @@ def write_i18n():
     if miss2: print("WARNING missing zh/ko:", miss2[:10])
     for i, code in enumerate(("zh", "ko")):
         data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
-    import i18n_p0, i18n_acct, i18n_admin, i18n_shop, i18n_privacy   # v3.4, account/sign-in, admin, shop (v3.8) and privacy (v3.10) strings, all 8 languages in one row
-    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P + i18n_shop.P + i18n_privacy.P:
+    import i18n_p0, i18n_acct, i18n_admin, i18n_shop, i18n_privacy, i18n_polish   # v3.4, account/sign-in, admin, shop (v3.8), privacy (v3.10) and polish (v3.11) strings, all 8 languages in one row
+    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P + i18n_shop.P + i18n_privacy.P + i18n_polish.P:
         assert len(row) == 9, row[0]
         for code, val in zip(("de", "fr", "ja", "es", "ru", "ar", "zh", "ko"), row[1:]):
             data[code][row[0]] = val
-    js = "/* Translations (EN → DE / FR / JA). Generated from _build/i18n.py */\nwindow.TAS_I18N=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
-    open(os.path.join(ROOT, "assets", "js", "i18n.js"), "w", encoding="utf-8").write(js)
-    print("wrote assets/js/i18n.js", sum(len(v) for v in data.values()), "strings")
+    # v3.11: one small file per language, loaded only for that language (English needs none)
+    d = os.path.join(ROOT, "assets", "js", "i18n"); os.makedirs(d, exist_ok=True)
+    for code in I18N_LANGS:
+        js = f"/* {code} translations. Generated by _build/build.py from the _build/i18n*.py files — do not edit. */\n" \
+             f"(window.TAS_I18N=window.TAS_I18N||{{}})[{json.dumps(code)}]=" + json.dumps(data[code], ensure_ascii=False, separators=(",", ":")) + ";\n"
+        open(os.path.join(d, code + ".js"), "w", encoding="utf-8").write(js)
+    print("wrote assets/js/i18n/*.js", sum(len(data[c]) for c in I18N_LANGS), "strings")
 
 if __name__ == "__main__":
     write_i18n(); write_catalog()

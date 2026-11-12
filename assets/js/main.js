@@ -1,7 +1,17 @@
 /* THE AAMIR SHEIKH — v3 interactions. Vanilla JS, no build step.
    Interfaces (Riot / Noir / Village) · music + synthesised SFX · accessibility
    settings · order & feedback forms · HLS video player · scroll reveals. */
-(function () {
+/* v3.11: every language has its own small file (assets/js/i18n/xx.js). The page head starts fetching the
+   visitor's one early; the site starts once it is in, so the page is translated in one go. */
+(function (run) {
+  var l = document.documentElement.getAttribute("data-lang"), v = window.TAS_I18V || {};
+  if (l && l !== "en" && v[l] && !(window.TAS_I18N && window.TAS_I18N[l])) {
+    var s = document.createElement("script"), done = false, go = function () { if (!done) { done = true; run(); } };
+    s.src = (window.TAS_ROOT || "") + "assets/js/i18n/" + l + ".js?v=" + v[l];
+    s.onload = s.onerror = go; setTimeout(go, 8000);           // never leave the site dead if the file is slow
+    document.head.appendChild(s);
+  } else run();
+})(function () {
   "use strict";
   var doc = document, root = doc.documentElement, ROOT = window.TAS_ROOT || "";
   root.classList.remove("no-js"); root.classList.add("js");
@@ -439,6 +449,13 @@
     if (!v.getAttribute("src") && v.dataset.src) v.src = v.dataset.src;
     var p = v.play(); if (p && p.catch) p.catch(function () {});
   }
+  /* Riot (v3.11): reaching S or above on a style meter flashes the screen edges crimson, once per new letter */
+  function devilTrigger() {
+    if (reduced() || root.getAttribute("data-ui") !== "riot" || root.getAttribute("data-cvd") === "contrast") return;
+    var f = $(".dt-fx");
+    if (!f) { f = doc.createElement("div"); f.className = "dt-fx"; f.setAttribute("aria-hidden", "true"); doc.body.appendChild(f); }
+    f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
+  }
   var heroRank = $("[data-hero-rank]");
   if (heroRank) {
     var RL = ["D", "C", "B", "A", "S", "SS", "SSS"], RW = ["Dull", "Cool", "Bravo", "Absolute", "Stylish", "Sensational", "Smokin' Sexy Style"];
@@ -447,7 +464,7 @@
     var upd = function () {
       var i = Math.min(RL.length - 1, Math.floor(pts / 15));
       if (bar) bar.style.setProperty("--rk", pts + "%");
-      if (i !== rcur) { rcur = i; heroRank.textContent = RL[i]; rw.textContent = RW[i]; heroRank.classList.add("pop"); setTimeout(function () { heroRank.classList.remove("pop"); }, 220); }
+      if (i !== rcur) { if (i > rcur && i >= 4) devilTrigger(); rcur = i; heroRank.textContent = RL[i]; rw.textContent = RW[i]; heroRank.classList.add("pop"); setTimeout(function () { heroRank.classList.remove("pop"); }, 220); }
     };
     doc.addEventListener("click", function () { bump(7); });
     var lastY = 0; window.addEventListener("scroll", function () { var y = window.scrollY; if (Math.abs(y - lastY) > 120) { bump(3); lastY = y; } }, { passive: true });
@@ -568,10 +585,45 @@
       var max = root.scrollHeight - window.innerHeight, p = max > 0 ? window.scrollY / max : 0;
       rank.classList.toggle("show", window.scrollY > 300);
       var i = Math.min(letters.length - 1, Math.floor(p * letters.length));
-      if (i !== cur) { cur = i; rb.textContent = letters[i]; rs.textContent = words[i]; rb.classList.add("pop"); setTimeout(function () { rb.classList.remove("pop"); }, 260); }
+      if (i !== cur) { if (cur >= 0 && i > cur && i >= 4) devilTrigger(); cur = i; rb.textContent = letters[i]; rs.textContent = words[i]; rb.classList.add("pop"); setTimeout(function () { rb.classList.remove("pop"); }, 260); }
     };
     window.addEventListener("scroll", rupd, { passive: true }); rupd();
   }
+  /* v3.11: the missions terminal on Work — help, ls, open 2, whoami, contact, clear */
+  $$("[data-pterm]").forEach(function (box) {
+    var out = $("[data-pterm-out]", box), form = $("[data-pterm-form]", box), inp = $("input", form), hint = $("[data-pterm-hint]", box);
+    var items = $$(".pterm-ls a", box).map(function (a) { var m = a.textContent.match(/^(\d+)\s+(.*)$/); return { n: +m[1], t: m[2], h: a.getAttribute("href") }; });
+    var hist = [], hi = 0;
+    form.hidden = false; hint.hidden = false;
+    function line(text, cls) { var p = doc.createElement("p"); if (cls) p.className = cls; p.textContent = text; out.appendChild(p); return p; }
+    function echo(cmd) { var p = line("", "pterm-echo"); var pr = doc.createElement("span"); pr.className = "pterm-p"; pr.setAttribute("aria-hidden", "true"); pr.textContent = "aamir@tas:~$"; p.appendChild(pr); p.appendChild(doc.createTextNode(" " + cmd)); }
+    function list() { var ul = doc.createElement("ul"); ul.className = "pterm-ls"; items.forEach(function (it) { var li = doc.createElement("li"), a = doc.createElement("a"); a.href = it.h; a.textContent = ("0" + it.n).slice(-2) + "  " + it.t; li.appendChild(a); ul.appendChild(li); }); out.appendChild(ul); }
+    function run(raw) {
+      var cmd = raw.trim(), lc = cmd.toLowerCase(); if (!cmd) return;
+      echo(cmd);
+      if (lc === "help" || lc === "?") line(T("Commands: ls · open 1–7 · whoami · contact · clear"));
+      else if (lc === "ls" || lc === "ls missions" || lc === "dir") list();
+      else if (lc === "clear" || lc === "cls") { out.textContent = ""; }
+      else if (lc === "whoami") line(T("Motion designer, 3D artist and game developer — a computer science student at Tezpur University, Assam."));
+      else if (lc === "contact") { var p = line(""), a = doc.createElement("a"); a.className = "link"; a.href = ROOT + "order.html"; a.textContent = T("Place an order"); p.appendChild(a); p.appendChild(doc.createTextNode(" · " + MAIL)); }
+      else if (/^(open|cd|play)\s+/.test(lc)) {
+        var q = lc.replace(/^(open|cd|play)\s+/, ""), it = items.filter(function (x) { return String(x.n) === q.replace(/^0+/, "") || x.t.toLowerCase().indexOf(q) === 0; })[0];
+        if (!it) { line(T("No mission called “{q}”. Type ls.").replace("{q}", q), "pterm-err"); return; }
+        line(T("Opening {name}…").replace("{name}", it.t)); sfx("switch");
+        var target = doc.getElementById(it.h.slice(1));
+        setTimeout(function () { if (target) { target.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }); history.replaceState(null, "", it.h); } }, reduced() ? 0 : 350);
+      }
+      else if (lc === "sudo" || lc.indexOf("sudo ") === 0) line(T("Nice try."), "pterm-err");
+      else line(T("Command not found: {c}. Type help.").replace("{c}", cmd), "pterm-err");
+      out.scrollTop = out.scrollHeight;
+    }
+    form.addEventListener("submit", function (e) { e.preventDefault(); var v = inp.value; if (v.trim()) { hist.push(v); hi = hist.length; } inp.value = ""; run(v); });
+    inp.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowUp" && hist.length) { e.preventDefault(); hi = Math.max(0, hi - 1); inp.value = hist[hi]; }
+      else if (e.key === "ArrowDown" && hist.length) { e.preventDefault(); hi = Math.min(hist.length, hi + 1); inp.value = hist[hi] || ""; }
+    });
+    box.addEventListener("click", function (e) { if (!e.target.closest("a") && !getSelection().toString()) inp.focus({ preventScroll: true }); });
+  });
   /* 90-day grid */
   $$("[data-days-start]").forEach(function (svg) {
     var start = new Date(svg.getAttribute("data-days-start") + "T00:00:00+05:30");
@@ -674,9 +726,35 @@
         (dr.c || []).forEach(function (p) { $$('input[name="' + p[0] + '"]', form).forEach(function (i) { if (i.value === p[1]) i.checked = true; }); });
         (dr.f || []).forEach(function (p) { var f = $('[name="' + p[0] + '"]', form); if (f && p[1]) f.value = p[1]; });
         refresh();
-        if (signedInHint()) { status.className = "form-status ok"; status.textContent = T("Your picks are back. Press “Send to my account” again."); }
+        if (signedInHint()) { ss("tas_of_step", "3"); status.className = "form-status ok"; status.textContent = T("Your picks are back. Press “Send to my account” again."); }
       } catch (e) {}
       ss("tas_of", "");
+    }
+    /* v3.11: the order form in three steps — service, details, review and send. Without JavaScript all three show at once. */
+    var wiz = $$("[data-wiz]", form), wizAt = 1, wizBtns = $$("[data-wiz-to]", form);
+    function go(n, focus) {
+      if (!wiz.length) return;
+      wizAt = n;
+      wiz.forEach(function (p) { p.hidden = +p.getAttribute("data-wiz") !== n; });
+      wizBtns.forEach(function (b) { var k = +b.getAttribute("data-wiz-to"); if (k === n) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); b.classList.toggle("done", k < n); });
+      if (focus) {
+        var top = form.getBoundingClientRect().top;
+        if (top < 0 || top > window.innerHeight * .5) form.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
+        var h = $('[data-wiz="' + n + '"] h2', form); if (h) h.focus({ preventScroll: true });
+      }
+    }
+    function wizCheck(n) {   // may the visitor move on to step n?
+      if (n >= 2 && !vals(form, "svc").length && !vals(form, "like").length) {
+        go(1, true); status.className = "form-status err"; status.textContent = T("Pick at least one thing you want (step 1)."); return false;
+      }
+      return true;
+    }
+    if (wiz.length) {
+      form.classList.add("wiz-on");
+      $$("[data-wiz-next]", form).forEach(function (b) { b.addEventListener("click", function () { if (wizCheck(wizAt + 1)) { status.className = "form-status"; status.textContent = ""; go(wizAt + 1, true); } }); });
+      $$("[data-wiz-back]", form).forEach(function (b) { b.addEventListener("click", function () { go(wizAt - 1, true); }); });
+      wizBtns.forEach(function (b) { b.addEventListener("click", function () { var n = +b.getAttribute("data-wiz-to"); if (n <= wizAt || wizCheck(n)) go(n, true); }); });
+      go(ss("tas_of_step") ? 3 : 1, false); ss("tas_of_step", "");
     }
     /* v3.4: one message per press — the send buttons lock while sending, and after a successful
        send they stay locked until the visitor changes something (so a double tap can't send twice) */
@@ -695,9 +773,9 @@
       if (isOrder) {
         var bad = null;
         ["name", "contact"].forEach(function (n) { var f = $('[name="' + n + '"]', form); var empty = !f.value.trim(); f.setAttribute("aria-invalid", empty ? "true" : "false"); if (empty && !bad) bad = f; });
-        if (!vals(form, "svc").length && !vals(form, "like").length) { status.textContent = T("Pick at least one thing you want (step 1)."); status.classList.add("err"); var c = $('input[name="svc"]', form); if (c) c.focus(); return; }
+        if (!vals(form, "svc").length && !vals(form, "like").length) { go(1, true); status.textContent = T("Pick at least one thing you want (step 1)."); status.classList.add("err"); var c = $('input[name="svc"]', form); if (c) c.focus(); return; }
         if (sendKind === "account") { ["name", "contact"].forEach(function (n) { $('[name="' + n + '"]', form).setAttribute("aria-invalid", "false"); }); return toAccount(); }
-        if (bad) { status.textContent = T("Please add your name and a way to reach you."); status.classList.add("err"); bad.focus(); return; }
+        if (bad) { go(2, true); status.textContent = T("Please add your name and a way to reach you."); status.classList.add("err"); bad.focus(); return; }
       } else if (!vals(form, "rating").length && !field(form, "details") && !vals(form, "liked").length) {
         status.textContent = T("Give a rating or write a line first."); status.classList.add("err"); return;
       }
@@ -780,7 +858,7 @@
     var items = []; try { items = JSON.parse(box.getAttribute("data-items")); } catch (e) { return; }
     var vids = $$(".at-stage video", box), tt = $(".at-title", box), tk = $(".at-kind", box), logo = $(".at-logo", box);
     var IDLE = 45000, timer = null, on = false, idx = 0, cur = 0, swap = null, raf = null;
-    var colors = ["#ff0054", "#9eff00", "#d4a24c", "#3aa0ff", "#f4f1ea", "#e07a8a"], ci = 0;
+    var colors = ["#ff2b45", "#5b8cff", "#d4a24c", "#3aa0ff", "#f4f1ea", "#e07a8a"], ci = 0;
     var x = 40, y = 40, dx = 2.2, dy = 1.7;
     function busy() {
       var a = doc.activeElement, tag = a && a.tagName;
@@ -1821,4 +1899,4 @@
 
   /* ===================================================== boot */
   applyVisual(); syncMusicUI();
-})();
+});
