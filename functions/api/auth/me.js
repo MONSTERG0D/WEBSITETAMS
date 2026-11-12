@@ -1,9 +1,11 @@
 /* GET /api/auth/me — who is signed in (if anyone) and which sign-in methods are switched on. */
 import { json, cookies } from "../../_lib/http.js";
 import { config, getSession, publicUser, isAdmin, clearSessionCookies, SESSION_COOKIE, HINT_COOKIE } from "../../_lib/auth.js";
+import { maybePrune } from "../../_lib/retention.js";
 
-export async function onRequestGet({ request, env }) {
+export async function onRequestGet({ request, env, waitUntil }) {
   const c = config(env);
+  if (c.db && waitUntil) waitUntil(maybePrune(env));   // the once-a-day clean-up of old sign-in records
   const out = {
     ok: true,
     user: null,

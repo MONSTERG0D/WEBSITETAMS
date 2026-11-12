@@ -4,8 +4,8 @@ import { json } from "../_lib/http.js";
 import { config } from "../_lib/auth.js";
 import { upiConfig } from "../_lib/payments.js";
 
-const TABLES = ["users", "sessions", "login_events", "services", "orders", "payments", "audit_log", "order_parts"];
-const SCHEMA_NEEDED = 3;
+const TABLES = ["users", "sessions", "login_events", "services", "orders", "payments", "audit_log", "order_parts", "deletion_requests"];
+const SCHEMA_NEEDED = 4;
 
 export async function onRequestGet({ env }) {
   const c = config(env);

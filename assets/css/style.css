@@ -1318,3 +1318,25 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 .ad-pay-h .adm-st[data-s="confirmed"] { color: var(--accent-2); }
 .ad-pay-h .adm-st[data-s="rejected"] { color: var(--fg-3); }
 :root[lang="ar"] .ad-pay-h .adm-st { letter-spacing: 0; font-family: var(--f-body); }
+
+/* =====================================================================
+   v3.10 — privacy page, "Your data" on the account page
+   ===================================================================== */
+.prv { display: grid; gap: 14px; max-width: 52rem; }
+.prv-s { display: grid; gap: 10px; padding: clamp(18px, 3vw, 28px); background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); }
+[data-ui="noir"] .prv-s { border-radius: 18px; }
+[data-ui="riot"] .prv-s:hover { box-shadow: var(--shadow); }
+.prv-h { display: flex; gap: .5em; align-items: center; font-size: var(--t-m); font-weight: 600; line-height: 1.2; }
+.prv-h .i { color: var(--accent); width: 1.1em; height: 1.1em; }
+[data-ui="noir"] .prv-h { font-family: var(--f-serif); font-weight: 400; font-style: italic; }
+[data-ui="village"] .prv-h { font-family: var(--f-hand); font-weight: 600; font-size: 1.7rem; }
+.prv-l { display: grid; gap: 8px; padding-inline-start: 1.2em; list-style: disc; color: var(--fg-2); line-height: 1.55; }
+.prv-l li::marker { color: var(--accent); }
+.prv-mail { font-family: var(--f-mono); }
+.prv-foot { margin-top: 10px; }
+.acct-prv { display: flex; gap: .5em; align-items: center; }
+.acct-del { display: grid; gap: 8px; padding-top: 16px; border-top: 1px dashed var(--rule); }
+.acct-del .m-links { margin-top: 4px; }
+.acct-del-state { font-weight: 600; color: var(--accent); }
+.adm-t .adm-st[data-s="requested"] { color: var(--accent); }
+.adm-t .adm-st[data-s="done"] { color: var(--accent-2); }

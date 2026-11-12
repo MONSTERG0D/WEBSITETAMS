@@ -18,14 +18,17 @@ Built so far: the foundation (step 1), sign-in with the account page (step 2), t
 | `functions/api/auth/logout.js` | `POST /api/auth/logout` — ends the session. |
 | `functions/api/account/orders.js` | `GET /api/account/orders` — the signed-in person's own orders. |
 | `functions/api/account/order.js` | `GET /api/account/order?ref=` — one of their orders, with how to pay what is due. `POST` with `action: "cancel"` cancels it while nothing is paid; `action: "paid"` sends the 12-digit UPI reference. |
+| `functions/api/account/deletion.js` | `GET /api/account/deletion` — is there an open request to delete this account's data. `POST` with `action: "request"` asks for it, `action: "cancel"` takes it back. |
 | `functions/api/orders.js` | `POST /api/orders` — place an order, from the Services page (one service) or from the order form (`source: "form"`). |
 | `functions/api/admin/order.js` | `GET /api/admin/order?ref=` — one order for the owner. `POST` actions: `price` (one part or several), `next_part`, `resend`, `status`, `note`, and for payments `confirm` (Mark paid), `reject`, `mark_paid` (paid some other way). |
+| `functions/api/admin/deletion.js` | `POST /api/admin/deletion { id }` — the owner deletes the data of one open request (see "Deleting someone's data"). |
+| `functions/_lib/retention.js` | Clears old sign-in history, ended sessions and used codes, once a day. |
 | `functions/_lib/payments.js` | UPI settings, the UPI payment link, the 12-digit reference check, and `settleStatements()`, which marks a part paid and moves the order on. |
 | `assets/js/qr.js` | The QR code maker for the pay box, written for this site (no library). |
 | `functions/_lib/catalog.js` | The price list and pricing rules the server charges. **Generated** by `_build/build.py` from `_build/catalog.py` and `_build/pricing_core.js` — do not edit it by hand. |
 | `functions/_lib/orders.js`, `ordermail.js` | Order rules (references, limits, parts) and the customer emails in nine languages. |
 | `functions/_lib/` | Shared helpers. Not routes. `auth.js` holds accounts, sessions, the sign-in history and the rate limits. |
-| `functions/api/admin/` | `users.js`, `orders.js`, `payments.js` — owner-only lists. `?q=` searches, `?format=csv` downloads a CSV. `order.js` — one order, and the owner's changes to it. |
+| `functions/api/admin/` | `users.js`, `orders.js`, `payments.js`, `deletions.js` — owner-only lists. `?q=` searches, `?format=csv` downloads a CSV. `order.js` — one order, and the owner's changes to it. |
 | `functions/_lib/admin.js` | Search, paging (200 rows on screen, 5000 per CSV) and safe CSV writing for the admin routes. |
 | `admin.html` | The admin page (built by `_build/build.py`; its script is the "admin page" part of `assets/js/main.js`). |
 | `account.html` | The account page (built by `_build/build.py`; its script is the "account + sign-in" part of `assets/js/main.js`). |
@@ -55,12 +58,13 @@ Both are connected to the Pages project `websitetams` under the variable name `D
 | `payments` | One row per payment attempt. `provider` is `upi` now; a gateway such as Razorpay fits later without changing the table. |
 | `audit_log` | Who did what: price set, payment confirmed, account deleted. |
 | `login_codes` | The 6-digit email codes, stored only as a keyed hash. 10 minutes, one use, 5 tries. |
+| `deletion_requests` | "Ask to delete my data": `requested` → `done` (or `cancelled` by the person). One open request per account. |
 | `order_parts` | What is paid for an order: one part, or an advance, milestones and a final part. `locked` → `due` → `paid` (or `void` when replaced). |
 | `schema_migrations`, `app_meta` | Bookkeeping: which schema files ran, and which database this is. |
 
 Money is stored as whole numbers in the smallest unit (paise) with a currency code. Times are Unix seconds, UTC.
 
-A deleted account keeps its row so that orders and payments stay consistent, but its personal details are wiped.
+A deleted account keeps its row so that orders and payments stay consistent, but its personal details are wiped (see below).
 
 ## First-time setup
 
@@ -78,7 +82,7 @@ npx wrangler@latest d1 execute tas-db-preview --remote --yes --file _db/setup/la
 
 Then, in the Cloudflare dashboard: Workers & Pages → `websitetams` → Settings → Bindings → Add → D1 database. Variable name `DB`. Choose `tas-db` for the Production environment and `tas-db-preview` for the Preview environment. A binding takes effect on the next deployment.
 
-Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"tables": 8`, the right `"database"` label, and `"schema"` equal to `"schema_needed"` (3 since step 4). The `"signin"` part says yes or no for each sign-in setting, so a missing one is easy to spot.
+Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"tables": 9`, the right `"database"` label, and `"schema"` equal to `"schema_needed"` (4 since step 6). The `"signin"` part says yes or no for each sign-in setting, so a missing one is easy to spot.
 
 ## How sign-in works
 
@@ -119,6 +123,15 @@ Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"ta
 - **Reject:** the payment becomes `rejected`, the part can be paid again, and the customer gets an email asking them to check the reference.
 - **Paid some other way** (cash, bank transfer, a reference the customer forgot to send): "Mark this part paid", with an optional UPI reference. It is stored with provider `manual` when there is no reference.
 - **Razorpay later:** a gateway payment is another `payments` row (`provider = 'razorpay'`, `provider_order_id` from Razorpay). Its signed webhook would call the same `settleStatements()` that Mark paid uses, so no table and no page changes.
+
+## Privacy and deleting data (step 6)
+
+- **The privacy page** is `privacy.html`, built from `PRIVACY` in `_build/build.py` (strings in `_build/i18n_privacy.py`). The footer links to it on every page, and so does the sign-in card. Change `PRIVACY_UPDATED` whenever the text changes. This is also the address for the Google sign-in consent screen: `https://theaamirsheikh.com/privacy.html`.
+- **Asking:** on the account page, "Your data" → "Ask to delete my data" (tap twice). A `deletion_requests` row is written, the page shows the date, and you get an email with a link to Admin → Deletions. "Keep my account" takes the request back while it is open. The page promises it is done within 30 days.
+- **Deleting someone's data:** Admin → Deletions → "Delete data" (tap twice). It refuses while a UPI reference from that person is waiting for a check, or while an order is paid or being made: finish those first. Your own account cannot be deleted there.
+- **What deleting does**, in one transaction: open requests and unpaid orders are cancelled and their unpaid parts voided; every order keeps its number, service, amounts, dates and status but loses the brief, your private note and the name, contact and WhatsApp number from the form; payments keep amount, date and UPI reference but lose notes; sessions, sign-in history and codes are removed; the audit log loses IP hashes; the `users` row becomes `deleted-<id>@deleted.invalid` with no name, no Google link and status `deleted`. The person gets a "your data has been deleted" email first (to the old address, in their language). If they sign in again later with the same email, they get a new, empty account.
+- **Kept automatically short:** sign-in history 90 days; ended sessions 30 days after they end; email codes 1 day after they expire. This runs at most once a day, the next time someone opens a page (from `/api/auth/me`), and needs no setup.
+- In Admin, a deleted account shows as "Deleted account" in every list.
 
 ## Changing the schema later
 

@@ -159,6 +159,16 @@ BOOT = ("<script>(function(){var d=document.documentElement,s={};try{s=JSON.pars
         "var L=s.lang||'en';d.setAttribute('lang',L);d.setAttribute('data-lang',L);if(L==='ar')d.setAttribute('dir','rtl');"
         "if(s.text)d.style.fontSize=s.text+'%';if(s.bright&&s.bright!=100)d.style.setProperty('--bright',s.bright/100)})()</script>")
 
+_VER = {}
+def ver(rel):
+    """A short fingerprint of a file's contents, added to its address (style.css?v=…). Browsers may keep
+    scripts and styles for a day (_headers), so a new fingerprint is what makes them fetch the new copy
+    right after a deploy, instead of running yesterday's script with today's page."""
+    if rel not in _VER:
+        import hashlib
+        with open(os.path.join(ROOT, rel), "rb") as f: _VER[rel] = hashlib.sha256(f.read()).hexdigest()[:10]
+    return _VER[rel]
+
 def head(title, desc, path, p, scripts=()):
     url = SITE + "/" + ("" if path == "index.html" else path)
     full = title if title.startswith(BRAND) else f"{title} — {BRAND}"
@@ -181,14 +191,14 @@ def head(title, desc, path, p, scripts=()):
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="{p}assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{p}assets/img/apple-touch-icon.png">
-<link rel="stylesheet" href="{p}assets/css/style.css">
+<link rel="stylesheet" href="{p}assets/css/style.css?v={ver("assets/css/style.css")}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="{FONTS}" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="{FONTS}"></noscript>
 <script>window.TAS_ROOT="{p}";</script>
-<script src="{p}assets/js/i18n.js" defer></script>
-{"".join(f'<script src="{p}assets/js/{js}" defer></script>' + chr(10) for js in scripts)}<script src="{p}assets/js/main.js" defer></script>
+<script src="{p}assets/js/i18n.js?v={ver("assets/js/i18n.js")}" defer></script>
+{"".join('<script src="' + p + 'assets/js/' + js + '?v=' + ver("assets/js/" + js) + '" defer></script>' + chr(10) for js in scripts)}<script src="{p}assets/js/main.js?v={ver("assets/js/main.js")}" defer></script>
 </head>
 '''
 
@@ -337,7 +347,7 @@ def footer(p):
         </div>
       </div>
       <div class="col"><p class="label">Chapters</p><ul class="mt-s foot-list">{pages}</ul></div>
-      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}play.html">{ico("lighthouse")} Lighthouse game</a></li><li><a href="{p}account.html" data-acct-link>{ico("user-round")} <span class="acct-t">Sign in</span></a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
+      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}play.html">{ico("lighthouse")} Lighthouse game</a></li><li><a href="{p}account.html" data-acct-link>{ico("user-round")} <span class="acct-t">Sign in</span></a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><a href="{p}privacy.html">{ico("shield-check")} Privacy</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
     </div>
     <div class="foot-base label">
       <span>© <span data-year>2026</span> {BRAND}</span>
@@ -1014,6 +1024,75 @@ def build_credits():
 </section>'''
     page("credits.html", "Credits", "Music, photo, icon and font credits for theaamirsheikh.com.", body, current="credits.html")
 
+# ================================================================= PRIVACY (step 6)
+# Plain words for what the site keeps. Keep it true: when the code starts keeping something new, say so here
+# and change PRIVACY_UPDATED. The text is translated in _build/i18n_privacy.py.
+PRIVACY_UPDATED = ("2026-11-12", "12 Nov 2026")
+PRIVACY = [
+    ("user-round", "Who looks after your data", [
+        "THE AAMIR SHEIKH, Tezpur, Assam, India.",
+        "For any question or request about your data, write to:",
+    ], "mail"),
+    ("globe", "Browsing without an account", [
+        "Your settings (interface, language, music, accessibility) are saved in your own browser, not on my server.",
+        "Fonts come from Google Fonts, so your browser asks Google for them.",
+        "Cloudflare hosts the site and handles every visit. It may keep short technical logs to keep the site safe.",
+        "No analytics, no tracking, no ads.",
+    ], None),
+    ("lock", "When you sign in", [
+        "Your email address. With Google sign-in, also your name and your Google account ID. No password: there isn’t one.",
+        "A sign-in cookie that keeps you signed in for 30 days. You can sign out any time.",
+        "A sign-in history: time, method, country, browser and a scrambled form of your IP address. It stops abuse and is deleted after 90 days.",
+        "Email codes are stored only in scrambled form and stop working after 10 minutes.",
+    ], None),
+    ("shopping-bag", "When you order and pay", [
+        "What you ordered, your brief, the timing and the price, and your WhatsApp number if you give it.",
+        "UPI payments go straight from your UPI app to my account. This site never sees your bank details or UPI PIN. It keeps the amount, the date and the 12-digit UPI reference you type in.",
+        "I use these only to do the work, send you prices and receipts, and keep my accounts.",
+    ], None),
+    ("message-circle", "The order form and feedback", [
+        "“Send on WhatsApp” opens WhatsApp with your message, and “Send to Gmail” sends it through FormSubmit to my Gmail. Their own privacy rules apply.",
+    ], None),
+    ("users", "Who else handles it", [
+        "Cloudflare: hosting, the database and the “are you human” check.",
+        "Google: sign-in with Google, and fonts.",
+        "Resend: sends the site’s emails (codes, prices, receipts).",
+        "WhatsApp and FormSubmit: only if you use those buttons.",
+        "I never sell your data or share it for advertising.",
+    ], None),
+    ("check", "Cookies", [
+        "Only what sign-in needs: the sign-in cookie, a small cookie that tells the menu you are signed in, and a short-lived one during Google sign-in. No tracking or advertising cookies.",
+    ], None),
+    ("clock", "How long I keep it", [
+        "Your account: until you ask me to delete it.",
+        "Sign-in history: 90 days.",
+        "Orders and payments: kept for my accounts. When your account is deleted, your name, email, WhatsApp number and briefs are removed, and only order numbers, services, amounts, dates and UPI references stay.",
+    ], None),
+    ("shield-check", "Your choices", [
+        "See your orders any time on your account page.",
+        "Ask me by email for a copy of your data, or to correct it.",
+        "Ask to delete your data from your account page, or by email. I delete it within 30 days and confirm by email.",
+    ], "account"),
+]
+
+def build_privacy():
+    secs = ""
+    for icon, heading, lines, extra in PRIVACY:
+        items = "".join(f"<li>{esc(l)}</li>" for l in lines)
+        more = ""
+        if extra == "mail":
+            more = f'<p class="prv-mail"><a class="link" href="mailto:{EMAIL}?subject=Privacy" data-no-i18n dir="ltr">{EMAIL}</a></p>'
+        elif extra == "account":
+            more = f'<p class="m-links"><a class="btn btn--small" href="account.html">{ico("user-round")} Your account</a></p>'
+        secs += f'<section class="prv-s rv"><h2 class="prv-h">{ico(icon)} {esc(heading)}</h2><ul class="prv-l">{items}</ul>{more}</section>'
+    body = page_head("✦", "Privacy", "Your data, <em>plainly.</em>", "What this site keeps about you, why, and how to have it deleted.", "shield-check")
+    body += f'''<section class="wrap prv" style="padding-bottom:clamp(48px,8vw,120px)">
+  {secs}
+  <p class="mini muted prv-foot">Last updated: <time datetime="{PRIVACY_UPDATED[0]}" data-fmt-date data-no-i18n>{PRIVACY_UPDATED[1]}</time></p>
+  <p class="mini muted">This page is translated from English. If a translation differs, the English text applies.</p>
+</section>'''
+    page("privacy.html", "Privacy", "What theaamirsheikh.com keeps about you, why, and how to have it deleted.", body, current="privacy.html")
+
 # ================================================================= ACCOUNT + SIGN-IN
 # Google's "G" mark, unaltered, as its sign-in branding guidelines require.
 G_LOGO = ('<svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true" focusable="false">'
@@ -1048,6 +1127,7 @@ def build_account():
       <button type="submit" class="btn btn--solid">{ico("check")} Sign in</button>
       <button type="button" class="btn btn--ghost btn--small" data-code-back>Use a different email or send a new code</button>
     </form>
+    <p class="mini muted acct-prv">{ico("shield-check")} <a class="link" href="privacy.html">How I handle your data</a></p>
   </div>
 
   <div class="acct-card" data-view="in" hidden>
@@ -1065,6 +1145,15 @@ def build_account():
       <a class="btn btn--solid" href="order.html">{ico("shopping-bag")} Place an order</a>
       <a class="btn" href="admin.html" data-admin-link hidden>{ico("lock")} Admin</a>
       <button type="button" class="btn" data-signout>Sign out</button>
+    </div>
+    <div class="acct-del" data-del-box>
+      <p class="label">{ico("shield-check")} Your data</p>
+      <p class="mini muted">What I keep about you, and why: <a class="link" href="privacy.html">Privacy</a></p>
+      <p class="mini acct-del-state" data-del-state data-no-i18n hidden></p>
+      <div class="m-links">
+        <button type="button" class="btn btn--small btn--ghost" data-del-ask>{ico("trash-2")} <span data-del-ask-t data-no-i18n>Ask to delete my data</span></button>
+        <button type="button" class="btn btn--small" data-del-keep hidden><span>Keep my account</span></button>
+      </div>
     </div>
   </div>
 
@@ -1117,7 +1206,7 @@ def build_admin():
     """Owner-only lists of users, orders and payments, with search and CSV export.
     The HTML holds no data: main.js asks /api/admin/* and the server refuses anyone but ADMIN_EMAIL."""
     tabs = "".join(f'<button type="button" data-tab="{k}" aria-pressed="{"true" if k == "users" else "false"}">{ico(i)} {t} <span class="adm-n" data-count="{k}"></span></button>'
-                   for k, i, t in [("users", "users", "Users"), ("orders", "shopping-bag", "Orders"), ("payments", "credit-card", "Payments")])
+                   for k, i, t in [("users", "users", "Users"), ("orders", "shopping-bag", "Orders"), ("payments", "credit-card", "Payments"), ("deletions", "trash-2", "Deletions")])
     body = page_head("✦", "Admin", "The <em>back office.</em>", "Only you can see this page: everyone who signed up, every order and every payment.", "lock")
     body += f'''<section class="wrap acct adm" data-adm style="padding-bottom:clamp(48px,8vw,120px)">
   <noscript><p class="lead">This page needs JavaScript.</p></noscript>
@@ -1272,7 +1361,7 @@ def build_404():
     build_game("play.html", "")
 
 def write_sitemap():
-    pages = ["", "purpose.html", "struggles.html", "skills.html", "projects.html", "inspirations.html", "services.html", "order.html", "credits.html", "play.html", "90-day-progress/"] + [f"skills/{s[0]}.html" for s in SKILLS]
+    pages = ["", "purpose.html", "struggles.html", "skills.html", "projects.html", "inspirations.html", "services.html", "order.html", "credits.html", "privacy.html", "play.html", "90-day-progress/"] + [f"skills/{s[0]}.html" for s in SKILLS]
     urls = "".join(f"<url><loc>{SITE}/{p}</loc></url>" for p in pages)
     open(os.path.join(ROOT, "sitemap.xml"), "w").write(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
 
@@ -1289,8 +1378,8 @@ def write_i18n():
     if miss2: print("WARNING missing zh/ko:", miss2[:10])
     for i, code in enumerate(("zh", "ko")):
         data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
-    import i18n_p0, i18n_acct, i18n_admin, i18n_shop   # v3.4, account/sign-in, admin and shop (v3.8) strings, all 8 languages in one row
-    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P + i18n_shop.P:
+    import i18n_p0, i18n_acct, i18n_admin, i18n_shop, i18n_privacy   # v3.4, account/sign-in, admin, shop (v3.8) and privacy (v3.10) strings, all 8 languages in one row
+    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P + i18n_shop.P + i18n_privacy.P:
         assert len(row) == 9, row[0]
         for code, val in zip(("de", "fr", "ja", "es", "ru", "ar", "zh", "ko"), row[1:]):
             data[code][row[0]] = val
@@ -1300,4 +1389,4 @@ def write_i18n():
 
 if __name__ == "__main__":
     write_i18n(); write_catalog()
-    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_account(); build_admin(); build_404(); write_sitemap()
+    build_home(); build_story(); build_struggles(); build_skills(); build_work(); build_inspirations(); build_services(); build_order(); build_credits(); build_privacy(); build_account(); build_admin(); build_404(); write_sitemap()

@@ -53,11 +53,11 @@ function card(lang, { heading, lines, title, ref, button, href }) {
 <div style="max-width:440px;margin:0 auto;background:#ffffff;border:1px solid #e3ded2;padding:28px;text-align:${align}">
 <p style="margin:0 0 18px;font-size:13px;letter-spacing:1px;color:#6b665c" dir="ltr">THE AAMIR SHEIKH</p>
 <p style="margin:0 0 6px;font-size:20px;font-weight:bold">${esc(heading)}</p>
-<p style="margin:0 0 18px;font-size:13px;color:#6b665c"><span dir="ltr">${esc(ref)}</span> · <span dir="ltr">${esc(title)}</span></p>
+${ref ? `<p style="margin:0 0 18px;font-size:13px;color:#6b665c"><span dir="ltr">${esc(ref)}</span> · <span dir="ltr">${esc(title)}</span></p>` : '<p style="margin:0 0 12px"></p>'}
 ${lines.map((l) => `<p style="margin:0 0 10px;font-size:15px;line-height:1.5">${esc(l)}</p>`).join("")}
 <p style="margin:22px 0 0"><a href="${esc(href)}" style="display:inline-block;background:#0b0b0d;color:#ffffff;text-decoration:none;padding:12px 20px;font-size:15px;font-weight:bold">${esc(button)}</a></p>
 </div></body></html>`;
-  const text = `${heading}\n${ref} · ${title}\n\n${lines.join("\n")}\n\n${button}: ${href}\n\nTHE AAMIR SHEIKH`;
+  const text = `${heading}\n${ref ? `${ref} · ${title}\n` : ""}\n${lines.join("\n")}\n\n${button}: ${href}\n\nTHE AAMIR SHEIKH`;
   return { html, text };
 }
 
@@ -112,6 +112,24 @@ export function paidMail(lang, { ref, title, amountMinor, currency, allPaid, ori
 export function rejectedMail(lang, { ref, title, utr, amountMinor, currency, origin }) {
   const t = P[lang] || P.en, s = T[lang] || T.en, amount = money(lang, amountMinor, currency);
   return { subject: fill(t.noS, { ref }) + " — THE AAMIR SHEIKH", ...card(lang, { heading: t.noH, lines: [fill(t.noB, { utr, amount }), t.noB2], title, ref, button: s.see, href: orderLink(origin, ref) }) };
+}
+
+/* The account was deleted (step 6). Sent just before the details are wiped. */
+const D = {
+  en: ["Your data has been deleted", "As you asked, I deleted your account and your personal details.", "For my accounts I keep only the order numbers, amounts, dates and UPI references of past orders, without your name or email.", "Visit the site"],
+  de: ["Deine Daten wurden gelöscht", "Wie gewünscht habe ich dein Konto und deine persönlichen Daten gelöscht.", "Für meine Buchhaltung behalte ich nur Bestellnummern, Beträge, Daten und UPI-Referenzen früherer Bestellungen, ohne deinen Namen und deine E-Mail-Adresse.", "Zur Website"],
+  fr: ["Tes données ont été supprimées", "Comme demandé, j’ai supprimé ton compte et tes données personnelles.", "Pour ma comptabilité, je garde seulement les numéros de commande, montants, dates et références UPI des commandes passées, sans ton nom ni ton e-mail.", "Aller sur le site"],
+  ja: ["あなたのデータを削除しました", "ご依頼のとおり、アカウントと個人情報を削除しました。", "帳簿のため、過去の注文番号・金額・日付・UPI参照番号だけを、お名前やメールアドレスなしで保管します。", "サイトを見る"],
+  es: ["Tus datos se han eliminado", "Como pediste, eliminé tu cuenta y tus datos personales.", "Para mi contabilidad conservo solo los números de pedido, importes, fechas y referencias UPI de pedidos anteriores, sin tu nombre ni tu correo.", "Ir al sitio"],
+  ru: ["Твои данные удалены", "По твоей просьбе я удалил твой аккаунт и личные данные.", "Для учёта я храню только номера заказов, суммы, даты и номера UPI прошлых заказов — без имени и почты.", "Перейти на сайт"],
+  ar: ["تم حذف بياناتك", "كما طلبت، حذفتُ حسابك وبياناتك الشخصية.", "لأغراض حساباتي أحتفظ فقط بأرقام الطلبات والمبالغ والتواريخ ومراجع UPI للطلبات السابقة، دون اسمك أو بريدك.", "زيارة الموقع"],
+  zh: ["你的数据已删除", "按照你的要求，我已删除你的账户和个人信息。", "为了记账，我只保留过往订单的订单号、金额、日期和 UPI 参考号，不含你的姓名和邮箱。", "访问网站"],
+  ko: ["데이터가 삭제되었어요", "요청하신 대로 계정과 개인 정보를 삭제했어요.", "장부를 위해 지난 주문의 주문 번호, 금액, 날짜, UPI 참조 번호만 이름과 이메일 없이 보관해요.", "사이트 방문"],
+};
+
+export function deletedMail(lang, { origin, hadOrders }) {
+  const [h, b1, b2, visit] = D[lang] || D.en;
+  return { subject: h + " — THE AAMIR SHEIKH", ...card(lang, { heading: h, lines: hadOrders ? [b1, b2] : [b1], title: "", ref: "", button: visit, href: origin + "/" }) };
 }
 
 /* Sends one customer email. Returns { ok, status, error }; never throws. */

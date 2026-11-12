@@ -1099,8 +1099,15 @@
     cannot_price: "This order can’t be priced now. Reload it.", no_due_part: "Nothing is due on this order.",
     bad_reference: "A UPI reference is 12 digits. Please check it.", already_submitted: "A reference is already waiting for my check.",
     reference_used: "That UPI reference was already used. Please check it.", not_payable: "This order can’t be paid now.",
-    payment_not_waiting: "That payment isn’t waiting for a check. Reload it.", bad_parts: "Each part must be a whole number of rupees.", no_next_part: "There is no part to ask for.", bad_move: "That status change isn’t possible now. Reload it."
+    payment_not_waiting: "That payment isn’t waiting for a check. Reload it.",
+    already_requested: "You already asked. I’ll email you when it’s done.", no_request: "There is no request to cancel.",
+    payment_waiting: "A payment from this person is waiting for a check. Mark it paid or reject it first.",
+    orders_open: "This person has orders that are paid or being made. Deliver them first.", not_open: "This request is already closed.",
+    owner_account: "Your own account can’t be deleted here.", bad_parts: "Each part must be a whole number of rupees.", no_next_part: "There is no part to ask for.", bad_move: "That status change isn’t possible now. Reload it."
   };
+  $$("time[data-fmt-date]").forEach(function (t) {
+    try { t.textContent = new Date(t.getAttribute("datetime") + "T00:00:00").toLocaleDateString(S.lang, { year: "numeric", month: "long", day: "numeric" }); } catch (e) {}
+  });
   function shopError(j) { var c = j && j.error && j.error.code; return T(SHOP_ERR[c] || "Something went wrong. Please try again."); }
   function apiCall(path, body) {
     var o = { credentials: "same-origin", headers: { "Accept": "application/json" } };
@@ -1450,7 +1457,30 @@
       $("[data-user-name]", box).textContent = user.name || user.email;
       var m = $("[data-user-email]", box); m.textContent = user.email; m.hidden = !user.name;
       if (orderRef) return showOrder(orderRef);
-      show("in"); loadOrders();
+      show("in"); loadOrders(); loadDel();
+    }
+    /* ---------- "Ask to delete my data" (step 6): the owner deletes it within 30 days */
+    var delBox = $("[data-del-box]", box);
+    function drawDel(r) {
+      var st = $("[data-del-state]", delBox);
+      st.hidden = !r; $("[data-del-ask]", delBox).hidden = !!r; $("[data-del-keep]", delBox).hidden = !r;
+      if (r) st.textContent = T("You asked me to delete your data on {d}. I’ll do it within 30 days and email you when it’s done.").replace("{d}", day(r.created_at));
+    }
+    function loadDel() { if (delBox) call("account/deletion").then(function (j) { if (j.ok) drawDel(j.request); }); }
+    if (delBox) {
+      $("[data-del-ask-t]", delBox).textContent = T("Ask to delete my data");
+      twoStep($("[data-del-ask]", delBox), "Ask to delete my data", "Tap again to ask", function () {
+        call("account/deletion", { action: "request" }).then(function (j) {
+          if (!j.ok) return note(shopError(j), "err");
+          drawDel(j.request); note(T("Request sent. I’ll delete your data within 30 days and email you. ✅"), "ok");
+        });
+      });
+      $("[data-del-keep]", delBox).addEventListener("click", function () {
+        call("account/deletion", { action: "cancel" }).then(function (j) {
+          if (!j.ok) return note(shopError(j), "err");
+          drawDel(null); note(T("Request cancelled. Your account stays. ✅"), "ok");
+        });
+      });
     }
     function boot() {
       call("auth/me").then(function (j) {
@@ -1514,12 +1544,17 @@
       if (minor === null || minor === undefined) return "—";
       try { return new Intl.NumberFormat(S.lang, { style: "currency", currency: cur || "INR", maximumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100); } catch (e) { return (cur || "INR") + " " + (minor / 100); }
     }
-    function who(r) { return r.name ? r.name + " · " + r.email : r.email; }
+    var gone = function (e) { return /@deleted\.invalid$/.test(e || ""); };          // an account whose data was deleted (step 6)
+    var mail = function (r) { return gone(r.email) ? T("Deleted account") : r.email; };
+    function who(r) { return r.name ? r.name + " · " + mail(r) : mail(r); }
     var PAY_ST = { created: "Started", submitted: "Waiting for check", confirmed: "Confirmed", rejected: "Rejected", failed: "Failed", refunded: "Refunded" };
     var USER_ST = { active: "Active", blocked: "Blocked", deleted: "Deleted" };
+    var DEL_ST = { requested: "Waiting", cancelled: "Cancelled", done: "Deleted" };
     var st = function (map) { return function (r) { return { text: T(map[r.status] || r.status), s: r.status }; }; };
     var COLS = {
-      users: [["Name", function (r) { return r.name || "—"; }], ["Email", "email"],
+      deletions: [["Name", function (r) { return r.name || "—"; }], ["Email", mail], ["Status", st(DEL_ST)], ["Requested", function (r) { return day(r.created_at); }],
+        ["Open orders", "open_orders"], ["Action", function () { return ""; }]],
+      users: [["Name", function (r) { return r.name || "—"; }], ["Email", mail],
         ["Signed in with", function (r) { return (r.signup_method === "google" ? "Google" : T("Email code")) + (r.signup_method !== "google" && r.google === "yes" ? " + Google" : ""); }],
         ["Status", st(USER_ST)], ["Orders", "orders"], ["Signed up", function (r) { return day(r.created_at); }], ["Last login", function (r) { return day(r.last_login_at); }]],
       orders: [["Order no.", "ref"], ["Title", "title"], ["Customer", who], ["Status", st(ORDER_ST)], ["When", function (r) { return timingName(r.timing) || "—"; }], ["Amount", function (r) { return money(r.amount_minor, r.currency); }], ["Created", function (r) { return day(r.created_at); }]],
@@ -1531,6 +1566,23 @@
       }, function () { return { ok: false, error: { code: "network" } }; });
     }
     function url(kind, extra) { var v = q.value.trim(); return "admin/" + kind + "?" + (v ? "q=" + encodeURIComponent(v) + "&" : "") + (extra || ""); }
+    /* a "Delete data" button for an open deletion request (tap twice) */
+    function delButton(r) {
+      var b = doc.createElement("button"), sp = doc.createElement("span");
+      b.type = "button"; b.className = "btn btn--small btn--ghost"; sp.textContent = T("Delete data"); b.appendChild(sp);
+      twoStep(b, "Delete data", "Tap again to confirm", function () {
+        b.disabled = true;
+        apiCall("admin/deletion", { id: r.id }).then(function (j) {
+          b.disabled = false;
+          if (!j.ok) return note(shopError(j), "err");
+          var sent = j.email && j.email.ok;
+          load().then(function () {                    // reload first: loading clears the message line
+            note(sent ? T("Data deleted. The person has been told. ✅") : T("Data deleted, but the email didn’t go out: {e}").replace("{e}", (j.email && j.email.error) || "?"), sent ? "ok" : "err");
+          });
+        });
+      });
+      return b;
+    }
     function draw(j, term) {
       var cols = COLS[tab];
       thead.textContent = ""; tbody.textContent = "";
@@ -1540,6 +1592,7 @@
         cols.forEach(function (c) {
           var td = doc.createElement("td"), v = typeof c[1] === "function" ? c[1](r) : r[c[1]];
           if (v && typeof v === "object") { td.textContent = v.text; td.setAttribute("data-s", v.s); td.className = "adm-st"; } else td.textContent = v === null || v === undefined || v === "" ? "—" : String(v);
+          if (tab === "deletions" && c[0] === "Action") { td.textContent = ""; if (r.status === "requested") td.appendChild(delButton(r)); }
           if ((tab === "orders" || tab === "payments") && c[1] === "ref") { td.textContent = ""; var ob = doc.createElement("button"); ob.type = "button"; ob.className = "adm-open link"; ob.setAttribute("data-ref", r.ref); ob.textContent = r.ref; td.appendChild(ob); tr.classList.add("adm-click"); }
           if (td.className !== "adm-st") td.dir = "auto";   // emails, references and English titles keep their own direction in Arabic
           td.setAttribute("data-label", T(c[0])); tr.appendChild(td);
@@ -1553,12 +1606,12 @@
     function load() {
       var my = ++seq, term = q.value.trim();
       csv.href = "/api/" + url(tab, "format=csv");
-      region.setAttribute("aria-label", T(tab === "users" ? "Users" : tab === "orders" ? "Orders" : "Payments"));
+      region.setAttribute("aria-label", T({ users: "Users", orders: "Orders", payments: "Payments", deletions: "Deletions" }[tab]));
       return get(url(tab)).then(function (j) {
         if (my !== seq) return;                       // a newer search already answered
         if (!j.ok) { note(T("Couldn’t load this list."), "err"); return; }
         note(""); draw(j, term);
-        if (!term) { var n = $('[data-count="' + tab + '"]', box); if (n) n.textContent = j.total; }
+        if (!term) { var n = $('[data-count="' + tab + '"]', box); if (n) n.textContent = j.waiting !== undefined ? j.waiting : j.total; }
       });
     }
     /* ---------- one order: details, price and parts, status, private note, history (v3.8) */
@@ -1617,7 +1670,8 @@
       var cu = dq("[data-ad-cust]"); cu.textContent = "";
       if (o.customer) {
         var nm = doc.createElement("b"); nm.textContent = o.customer.name || "—"; cu.appendChild(nm); cu.appendChild(doc.createElement("br"));
-        var ml = doc.createElement("a"); ml.className = "link"; ml.href = "mailto:" + o.customer.email + "?subject=" + encodeURIComponent(o.ref); ml.textContent = o.customer.email; ml.dir = "ltr"; cu.appendChild(ml);
+        if (gone(o.customer.email)) cu.appendChild(doc.createTextNode(T("Deleted account")));
+        else { var ml = doc.createElement("a"); ml.className = "link"; ml.href = "mailto:" + o.customer.email + "?subject=" + encodeURIComponent(o.ref); ml.textContent = o.customer.email; ml.dir = "ltr"; cu.appendChild(ml); }
         if (i.phone) { cu.appendChild(doc.createElement("br")); var wa = doc.createElement("a"); wa.className = "link"; wa.target = "_blank"; wa.rel = "noopener"; wa.dir = "ltr"; wa.href = "https://wa.me/" + i.phone.replace(/\D/g, "").replace(/^0+/, ""); wa.textContent = "WhatsApp " + i.phone; cu.appendChild(wa); }
       }
       dq("[data-ad-brief]").textContent = o.brief || "—";
@@ -1758,8 +1812,10 @@
       if (!j.admin) return show("no");
       show("in");
       var want = (new URLSearchParams(location.search).get("order") || "").toUpperCase();   // the link in an order email
-      if (/^TAS-[2-9A-HJ-NP-Z]{6}$/.test(want)) { pickTab($('[data-tab="orders"]', box)); openOrder(want); } else load();
-      ["orders", "payments"].forEach(function (k) { get("admin/" + k).then(function (r) { var n = $('[data-count="' + k + '"]', box); if (n && r.ok) n.textContent = r.total; }); });
+      if (/^TAS-[2-9A-HJ-NP-Z]{6}$/.test(want)) { pickTab($('[data-tab="orders"]', box)); openOrder(want); }
+      else if (new URLSearchParams(location.search).get("tab") === "deletions") pickTab($('[data-tab="deletions"]', box));   // the link in a deletion email
+      else load();
+      ["orders", "payments", "deletions"].forEach(function (k) { get("admin/" + k).then(function (r) { var n = $('[data-count="' + k + '"]', box); if (n && r.ok) n.textContent = r.waiting !== undefined ? r.waiting : r.total; }); });
     });
   })();
 
