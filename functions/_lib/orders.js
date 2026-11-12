@@ -108,9 +108,14 @@ export function pageInfo(order) {
 }
 
 /* ---------------------------------------------------------------- parts */
+/* The parts of an order that count (not replaced), each with the payment that is settling it, if any.
+   pay_status is 'submitted' while the owner checks a UPI reference, 'confirmed' once paid. */
 export async function liveParts(env, orderId) {
   return (await env.DB.prepare(
-    "SELECT seq, amount_minor, currency, status, due_at, paid_at FROM order_parts WHERE order_id = ? AND status <> 'void' ORDER BY seq"
+    `SELECT p.id, p.seq, p.amount_minor, p.currency, p.status, p.due_at, p.paid_at, p.payment_id,
+            pay.status AS pay_status, pay.reference AS pay_ref
+       FROM order_parts p LEFT JOIN payments pay ON pay.id = p.payment_id
+      WHERE p.order_id = ? AND p.status <> 'void' ORDER BY p.seq`
   ).bind(orderId).all()).results;
 }
 

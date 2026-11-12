@@ -1073,14 +1073,44 @@ def build_account():
     <div class="ao-head"><p class="label" data-o-ref data-no-i18n></p><span class="o-s" data-o-status data-no-i18n></span></div>
     <h2 class="h-m ao-name" data-o-name data-no-i18n></h2>
     <dl class="ao-dl" data-o-facts data-no-i18n></dl>
-    <div class="summary ao-pay" data-o-pay hidden><p class="label">{ico("credit-card")} Amount due now</p><p class="os-total" data-o-due data-no-i18n></p><p class="mini muted">UPI payment opens here soon.</p></div>
+    <div class="summary ao-pay" data-o-pay hidden>
+      <p class="label">{ico("credit-card")} Amount due now</p>
+      <p class="os-total" data-o-due data-no-i18n></p>
+      <p class="mini muted" data-o-part data-no-i18n hidden></p>
+      <div class="ao-upi" data-o-upi hidden>
+        <div class="ao-phone">
+          <a class="btn btn--solid ao-paybtn" data-o-paylink href="#">{ico("smartphone")} Pay with a UPI app</a>
+          <p class="ao-apps mini"><span>Or open:</span> <a class="link" data-o-app="gpay" href="#" data-no-i18n>Google Pay</a> · <a class="link" data-o-app="phonepe" href="#" data-no-i18n>PhonePe</a> · <a class="link" data-o-app="paytm" href="#" data-no-i18n>Paytm</a></p>
+        </div>
+        <div class="ao-desk">
+          <div class="ao-qr" data-o-qr></div>
+          <p class="mini">Scan with any UPI app on your phone.</p>
+        </div>
+        <dl class="ao-dl ao-upi-dl">
+          <dt>UPI ID</dt><dd><span data-o-vpa data-no-i18n dir="ltr"></span> <button type="button" class="btn btn--small btn--ghost ao-copy" data-o-copy>{ico("copy")} <span data-o-copy-t data-no-i18n>Copy</span></button></dd>
+          <dt>Name</dt><dd data-o-payee data-no-i18n></dd>
+          <dt>Payment note</dt><dd data-o-note data-no-i18n dir="ltr"></dd>
+        </dl>
+        <details class="ao-more" data-o-more><summary>If the payment fails</summary>
+          <p class="mini">Some apps block payments opened from a website. Scan the QR code from another phone, or pay by hand: open your UPI app, choose “Pay UPI ID”, and use one of these IDs with the same amount and note.</p>
+          <ul class="ao-backups" data-o-backups data-no-i18n></ul>
+        </details>
+        <form class="acct-form ao-ref" data-o-ref-form novalidate>
+          <label class="fld"><span>After paying: the 12-digit UPI reference</span><input name="utr" inputmode="numeric" autocomplete="off" maxlength="16" dir="ltr" placeholder="123456789012"></label>
+          <p class="mini muted">Your UPI app shows it on the receipt, as “UPI transaction ID”, “UPI Ref No.” or “UTR”.</p>
+          <button type="submit" class="btn btn--solid">{ico("check")} I’ve paid: send the reference</button>
+        </form>
+      </div>
+      <p class="mini muted" data-o-upi-off hidden>UPI payment is not switched on yet. Please come back soon.</p>
+      <p class="ao-checking" data-o-checking data-no-i18n hidden></p>
+    </div>
     <div data-o-plan-box hidden><p class="label">{ico("layers")} Payment plan</p><ul class="acct-list ao-plan" data-o-plan data-no-i18n></ul></div>
     <p class="ao-state" data-o-state data-no-i18n></p>
     <div data-o-brief-box hidden><p class="label">{ico("square-pen")} Your brief</p><p class="ao-brief" data-o-brief data-no-i18n dir="auto"></p></div>
     <div class="m-links"><button type="button" class="btn btn--ghost btn--small" data-o-cancel hidden><span data-o-cancel-t data-no-i18n>Cancel this order</span></button></div>
   </div>
 </section>'''
-    page("account.html", "Account", "Sign in to THE AAMIR SHEIKH to place orders and see them in one place.", body, current="account.html", noindex=True, scripts=("catalog.js",))
+    page("account.html", "Account", "Sign in to THE AAMIR SHEIKH to place orders and see them in one place.", body, current="account.html", noindex=True, scripts=("catalog.js", "qr.js"))
 
 # ================================================================= ADMIN (owner only)
 def build_admin():
@@ -1133,6 +1163,10 @@ def build_admin():
       <section data-ad-plan-box hidden><p class="label">{ico("layers")} Payment plan</p><ul class="acct-list ao-plan" data-ad-plan data-no-i18n></ul>
         <div class="m-links"><button type="button" class="btn btn--small" data-ad-next hidden>Ask for the next part</button>
         <button type="button" class="btn btn--small" data-ad-resend hidden>Email the pay link again</button></div></section>
+      <section class="ad-pays" data-ad-pays hidden><p class="label">{ico("credit-card")} Payments</p><ul class="ad-paylist" data-ad-paylist data-no-i18n></ul></section>
+      <section data-ad-markpaid hidden><p class="label">{ico("check")} Paid some other way?</p>
+        <label class="fld"><span>UPI reference (optional)</span><input inputmode="numeric" maxlength="16" dir="ltr" autocomplete="off" data-ad-mp-ref></label>
+        <button type="button" class="btn btn--small" data-ad-mp><span data-ad-mp-t data-no-i18n>Mark this part paid</span></button></section>
       <section data-ad-moves hidden><p class="label">{ico("sliders-horizontal")} Status</p><div class="m-links" data-ad-move-btns data-no-i18n></div></section>
       <section><label class="fld"><span>Private note</span><textarea rows="3" maxlength="2000" data-ad-note></textarea></label>
         <p class="mini muted">Only you see this note.</p><button type="button" class="btn btn--small" data-ad-save-note>Save note</button></section>

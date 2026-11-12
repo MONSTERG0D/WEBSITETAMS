@@ -1282,3 +1282,39 @@ form[aria-busy="true"] .send-row { pointer-events: none; }
 :root[lang="ar"] .svc-p, :root[lang="ar"] .svc-tp, :root[lang="ar"] .os-bp, :root[lang="ar"] .ao-dl dt, :root[lang="ar"] .ao-head .o-s, :root[lang="ar"] .ad-h-t, :root[lang="ar"] .chip small { font-family: var(--f-body); letter-spacing: 0; }
 .ad-hist li.ad-h-bad { color: #ff6b6b; }
 [data-ui="village"] .ad-hist li.ad-h-bad { color: #b3262e; }
+
+/* =====================================================================
+   v3.9 — paying with UPI: the pay box on an order, and payments in the admin drawer
+   ===================================================================== */
+.ao-pay { gap: 10px; }
+.ao-upi { display: grid; gap: 16px; margin-top: 6px; }
+.ao-upi[hidden], .ao-pay [hidden] { display: none !important; }
+.ao-phone { display: grid; gap: 10px; }
+.ao-paybtn { width: 100%; justify-content: center; }
+.ao-apps { display: flex; flex-wrap: wrap; gap: 4px 8px; color: var(--fg-2); }
+.ao-desk { display: none; justify-items: start; gap: 8px; }
+.ao-qr .qr { display: block; width: min(220px, 100%); height: auto; padding: 0; background: #fff; border: 6px solid #fff; border-radius: 6px; box-shadow: 0 0 0 1px var(--rule); }
+/* phones and tablets get the button (it opens the UPI app); computers get the QR code to scan with a phone */
+@media (hover: hover) and (pointer: fine) { .ao-desk { display: grid; } .ao-phone { display: none; } }
+.ao-upi-dl dd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ao-upi-dl [data-o-vpa], .ao-upi-dl [data-o-note] { font-family: var(--f-mono); font-size: .92rem; overflow-wrap: anywhere; }
+.ao-copy { min-height: 32px; padding: 0 10px; }
+.ao-more summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
+.ao-more[open] summary { margin-bottom: 8px; }
+.ao-backups { display: grid; gap: 4px; margin-top: 8px; font-family: var(--f-mono); font-size: .9rem; }
+.ao-ref { gap: 8px; padding-top: 14px; border-top: 1px dashed var(--rule); }
+.ao-ref input { font-family: var(--f-mono); font-size: 1.2rem; letter-spacing: .12em; }
+.ao-checking { font-weight: 600; color: var(--accent-2); }
+[data-ui="village"] .ao-checking { color: var(--accent-2); }
+:root[lang="ar"] .ao-upi-dl [data-o-note] { font-family: var(--f-body); }
+/* admin */
+.ad-paylist { display: grid; gap: 8px; }
+.ad-paylist li { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: calc(var(--radius) / 2); background: var(--bg); }
+[data-ui="noir"] .ad-paylist li { border-radius: 12px; }
+.ad-paylist .m-links { margin-top: 6px; }
+.ad-pay-h { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.ad-pay-h b { font-family: var(--f-mono); letter-spacing: .04em; }
+.ad-pay-h .adm-st { font-family: var(--f-mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.ad-pay-h .adm-st[data-s="confirmed"] { color: var(--accent-2); }
+.ad-pay-h .adm-st[data-s="rejected"] { color: var(--fg-3); }
+:root[lang="ar"] .ad-pay-h .adm-st { letter-spacing: 0; font-family: var(--f-body); }

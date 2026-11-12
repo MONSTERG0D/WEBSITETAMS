@@ -2,6 +2,7 @@
    Reports only harmless facts: yes/no answers, the schema version and which database this is. */
 import { json } from "../_lib/http.js";
 import { config } from "../_lib/auth.js";
+import { upiConfig } from "../_lib/payments.js";
 
 const TABLES = ["users", "sessions", "login_events", "services", "orders", "payments", "audit_log", "order_parts"];
 const SCHEMA_NEEDED = 3;
@@ -11,6 +12,7 @@ export async function onRequestGet({ env }) {
   const out = {
     ok: false, service: "tas-api", db: "missing", database: null, schema: null, schema_needed: SCHEMA_NEEDED, tables: 0,
     signin: { session_secret: c.secret, google: c.google, turnstile: c.turnstile, email_service: c.mail, email_code: c.email, admin_email: !!(env.ADMIN_EMAIL && String(env.ADMIN_EMAIL).trim()) },
+    payments: { upi: !!upiConfig(env), upi_backups: (upiConfig(env) || { backups: [] }).backups.length },
     time: new Date().toISOString(),
   };
 

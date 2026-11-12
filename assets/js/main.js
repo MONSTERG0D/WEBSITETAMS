@@ -1096,7 +1096,10 @@
     bad_phone: "That WhatsApp number doesn’t look right.", rate_limited: "Too many orders in a short time. Please try again later.",
     too_many_open: "You have many open requests. Please wait for my reply first.", not_configured: "Ordering is not switched on yet. Please come back soon.",
     cannot_cancel: "This order can no longer be cancelled here.", not_found: "Couldn’t find that order.", network: "You seem to be offline. Please try again.",
-    cannot_price: "This order can’t be priced now. Reload it.", no_due_part: "Nothing is due on this order.", bad_parts: "Each part must be a whole number of rupees.", no_next_part: "There is no part to ask for.", bad_move: "That status change isn’t possible now. Reload it."
+    cannot_price: "This order can’t be priced now. Reload it.", no_due_part: "Nothing is due on this order.",
+    bad_reference: "A UPI reference is 12 digits. Please check it.", already_submitted: "A reference is already waiting for my check.",
+    reference_used: "That UPI reference was already used. Please check it.", not_payable: "This order can’t be paid now.",
+    payment_not_waiting: "That payment isn’t waiting for a check. Reload it.", bad_parts: "Each part must be a whole number of rupees.", no_next_part: "There is no part to ask for.", bad_move: "That status change isn’t possible now. Reload it."
   };
   function shopError(j) { var c = j && j.error && j.error.code; return T(SHOP_ERR[c] || "Something went wrong. Please try again."); }
   function apiCall(path, body) {
@@ -1334,7 +1337,7 @@
           [["o-ref", o.ref], ["o-t", orderName(o)], ["o-s", T(ST[o.status] || o.status)], ["o-d", day(o.created_at)], ["o-a", listPrice(o)]].forEach(function (c) {
             var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", o.due_minor ? "pending" : o.status); a.appendChild(s);
           });
-          if (o.due_minor) $(".o-s", a).textContent = T("Payment due");
+          if (o.due_minor) $(".o-s", a).textContent = T(o.checking ? "Waiting for check" : "Payment due");
           li.appendChild(a); ul.appendChild(li);
         });
       });
@@ -1346,7 +1349,7 @@
     function drawOrder(o) {
       var i = o.info || {}, parts = o.parts || [], due = parts.filter(function (p) { return p.status === "due"; })[0];
       $("[data-o-ref]", ov).textContent = o.ref;
-      var st = $("[data-o-status]", ov); st.textContent = T(due ? "Payment due" : ST[o.status] || o.status); st.setAttribute("data-s", due ? "pending" : o.status);
+      var st = $("[data-o-status]", ov); st.textContent = T(due ? (due.checking ? "Waiting for check" : "Payment due") : ST[o.status] || o.status); st.setAttribute("data-s", due ? "pending" : o.status);
       $("[data-o-name]", ov).textContent = orderName(o);
       var dl = $("[data-o-facts]", ov); dl.textContent = "";
       fact(dl, "When", timingName(i.timing));
@@ -1355,11 +1358,11 @@
         o.amount_minor === 0 ? T("Free") : o.amount_minor !== null && o.amount_minor !== undefined ? money(o.amount_minor, o.currency) : estText(i.est));
       if (i.source === "form") { fact(dl, "Budget", i.budget ? T(i.budget) : ""); fact(dl, "Liked", (i.likes || []).join(", ")); }
       fact(dl, "WhatsApp number", i.phone);
-      var pay = $("[data-o-pay]", ov); pay.hidden = !due; if (due) $("[data-o-due]", ov).textContent = money(due.amount_minor, due.currency || o.currency);
+      drawPay(o);
       var planBox = $("[data-o-plan-box]", ov), plan = $("[data-o-plan]", ov); plan.textContent = ""; planBox.hidden = parts.length < 2;
       parts.forEach(function (p) {
         var li = doc.createElement("li");
-        [["o-t", partName(p.seq, parts.length)], ["o-s", T(PART_ST[p.status] || p.status)], ["o-a", money(p.amount_minor, o.currency)]].forEach(function (c) {
+        [["o-t", partName(p.seq, parts.length)], ["o-s", T(p.checking ? "Waiting for check" : PART_ST[p.status] || p.status)], ["o-a", money(p.amount_minor, o.currency)]].forEach(function (c) {
           var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", p.status === "due" ? "pending" : p.status); li.appendChild(s);
         });
         plan.appendChild(li);
@@ -1377,6 +1380,48 @@
         drawOrder(j.order);
       });
     }
+    /* ---------- paying (v3.9): the UPI button on phones, the QR code on computers, then the UPI reference */
+    var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var APPS = { gpay: IOS ? "gpay://upi/pay?" : "tez://upi/pay?", phonepe: "phonepe://pay?", paytm: "paytmmp://pay?" };
+    var payNow = null;
+    function drawPay(o) {
+      var p = o.pay, box = $("[data-o-pay]", ov);
+      payNow = p; box.hidden = !p; if (!p) return;
+      $("[data-o-due]", ov).textContent = money(p.amount_minor, p.currency);
+      var pt = $("[data-o-part]", ov); pt.hidden = p.count < 2;
+      pt.textContent = partName(p.seq, p.count) + " · " + T("Part {n} of {t}").replace("{n}", p.seq).replace("{t}", p.count);
+      var ck = $("[data-o-checking]", ov), up = $("[data-o-upi]", ov), off = $("[data-o-upi-off]", ov);
+      ck.hidden = !p.checking;
+      if (p.checking) ck.textContent = T("Thanks! I’m checking the payment with UPI reference {r}. You’ll get an email when it’s confirmed.").replace("{r}", p.checking.reference);
+      up.hidden = !!p.checking || !p.upi; off.hidden = !!p.checking || !!p.upi;
+      if (!p.upi || p.checking) return;
+      var q = p.upi.query;
+      $("[data-o-paylink]", ov).href = "upi://pay?" + q;
+      $$("[data-o-app]", ov).forEach(function (a) { a.href = APPS[a.getAttribute("data-o-app")] + q; });
+      $("[data-o-qr]", ov).innerHTML = window.TAS_QR ? window.TAS_QR.svg("upi://pay?" + q, T("UPI QR code")) : "";
+      $("[data-o-vpa]", ov).textContent = p.upi.id; $("[data-o-payee]", ov).textContent = p.upi.payee; $("[data-o-note]", ov).textContent = p.upi.note;
+      var bl = $("[data-o-backups]", ov); bl.textContent = "";
+      [p.upi.id].concat(p.upi.backups || []).forEach(function (id) { var li = doc.createElement("li"); li.dir = "ltr"; li.textContent = id; bl.appendChild(li); });
+    }
+    $("[data-o-copy]", ov).addEventListener("click", function () {
+      if (!payNow || !payNow.upi) return;
+      var id = payNow.upi.id, t = $("[data-o-copy-t]", ov);
+      var done = function () { t.textContent = T("Copied"); sfx("switch"); setTimeout(function () { t.textContent = T("Copy"); }, 2000); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(id).then(done, function () {});
+      else { var r = doc.createRange(); r.selectNodeContents($("[data-o-vpa]", ov)); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+    });
+    $("[data-o-copy-t]", ov).textContent = T("Copy");
+    $("[data-o-ref-form]", ov).addEventListener("submit", function (e) {
+      e.preventDefault(); if (busy) return;
+      var f = this, inp = f.elements.utr, v = inp.value.replace(/[\s-]/g, "");
+      if (!/^\d{12}$/.test(v)) { inp.setAttribute("aria-invalid", "true"); inp.focus(); return note(T(SHOP_ERR.bad_reference), "err"); }
+      inp.setAttribute("aria-invalid", "false"); lock(f, true); note(T("Sending…"));
+      call("account/order", { ref: orderRef, action: "paid", reference: v }).then(function (j) {
+        lock(f, false);
+        if (!j.ok) return note(shopError(j), "err");
+        inp.value = ""; drawOrder(j.order); note(T("Reference sent. I’ll confirm by email once I see the payment. ✅"), "ok"); sfx("switch");
+      });
+    });
     twoStep($("[data-o-cancel]", ov), "Cancel this order", "Tap again to cancel", function () {
       var b = $("[data-o-cancel]", ov); b.disabled = true;
       call("account/order", { ref: orderRef, action: "cancel" }).then(function (j) {
@@ -1495,7 +1540,7 @@
         cols.forEach(function (c) {
           var td = doc.createElement("td"), v = typeof c[1] === "function" ? c[1](r) : r[c[1]];
           if (v && typeof v === "object") { td.textContent = v.text; td.setAttribute("data-s", v.s); td.className = "adm-st"; } else td.textContent = v === null || v === undefined || v === "" ? "—" : String(v);
-          if (tab === "orders" && c[1] === "ref") { td.textContent = ""; var ob = doc.createElement("button"); ob.type = "button"; ob.className = "adm-open link"; ob.setAttribute("data-ref", r.ref); ob.textContent = r.ref; td.appendChild(ob); tr.classList.add("adm-click"); }
+          if ((tab === "orders" || tab === "payments") && c[1] === "ref") { td.textContent = ""; var ob = doc.createElement("button"); ob.type = "button"; ob.className = "adm-open link"; ob.setAttribute("data-ref", r.ref); ob.textContent = r.ref; td.appendChild(ob); tr.classList.add("adm-click"); }
           if (td.className !== "adm-st") td.dir = "auto";   // emails, references and English titles keep their own direction in Arabic
           td.setAttribute("data-label", T(c[0])); tr.appendChild(td);
         });
@@ -1518,7 +1563,8 @@
     }
     /* ---------- one order: details, price and parts, status, private note, history (v3.8) */
     var dEl = $("[data-adm-order]"), dsh = dEl ? sheet(dEl) : null, dCur = null, dBusy = false, split = "100";
-    var HIST = { "order.created": "Order placed", "order.priced": "Price set", "order.part_opened": "Asked for the next part", "order.status": "Status changed", "order.note": "Note saved", "order.cancelled": "Cancelled by the customer" };
+    var HIST = { "order.created": "Order placed", "order.priced": "Price set", "order.part_opened": "Asked for the next part", "order.status": "Status changed", "order.note": "Note saved", "order.cancelled": "Cancelled by the customer",
+      "payment.submitted": "UPI reference received", "payment.confirmed": "Payment confirmed", "payment.rejected": "Payment rejected" };
     var MOVE = { in_progress: "Start work", delivered: "Mark delivered", cancelled: "Cancel order" };
     function dq(s) { return $(s, dEl); }
     function dnote(t, cls) { var st = dq("[data-ad-status]"); st.className = "form-status acct-status" + (cls ? " " + cls : ""); st.textContent = t || ""; }
@@ -1597,13 +1643,34 @@
       var pb = dq("[data-ad-plan-box]"), pl = dq("[data-ad-plan]"); pl.textContent = ""; pb.hidden = !o.parts.length;
       o.parts.forEach(function (p) {
         var li = doc.createElement("li");
-        [["o-t", partName(p.seq, o.parts.length)], ["o-s", T(PART_ST[p.status] || p.status)], ["o-a", money(p.amount_minor, o.currency)]].forEach(function (c) {
+        [["o-t", partName(p.seq, o.parts.length)], ["o-s", T(p.checking ? "Waiting for check" : PART_ST[p.status] || p.status)], ["o-a", money(p.amount_minor, o.currency)]].forEach(function (c) {
           var s = doc.createElement("span"); s.className = c[0]; s.textContent = c[1]; if (c[0] === "o-s") s.setAttribute("data-s", p.status === "due" ? "pending" : p.status); li.appendChild(s);
         });
         pl.appendChild(li);
       });
       dq("[data-ad-next]").hidden = !o.can.next_part;
       dq("[data-ad-resend]").hidden = !o.can.resend;
+      // payments: each UPI reference, with Mark paid / Reject while it waits
+      var pays = o.payments || [], plist = dq("[data-ad-paylist]"); plist.textContent = ""; dq("[data-ad-pays]").hidden = !pays.length;
+      pays.forEach(function (p) {
+        var li = doc.createElement("li"), head = doc.createElement("p"), sub = doc.createElement("p"), st = doc.createElement("span");
+        head.className = "ad-pay-h"; sub.className = "mini muted";
+        var ref = doc.createElement("b"); ref.dir = "ltr"; ref.textContent = p.reference || T(p.provider === "manual" ? "Marked paid by hand" : "No reference");
+        st.className = "adm-st"; st.setAttribute("data-s", p.status); st.textContent = T(PAY_ST[p.status] || p.status);
+        head.appendChild(ref); head.appendChild(doc.createTextNode(" · " + money(p.amount_minor, p.currency) + " ")); head.appendChild(st);
+        sub.textContent = (p.part ? partName(p.part, o.parts.length || 1) + " · " : "") + day(p.created_at) + (p.confirmed_at ? " → " + day(p.confirmed_at) : "");
+        li.appendChild(head); li.appendChild(sub);
+        if (p.status === "submitted") {
+          var row = doc.createElement("div"), yes = doc.createElement("button"), no = doc.createElement("button"), ys = doc.createElement("span"), ns = doc.createElement("span");
+          row.className = "m-links"; yes.type = no.type = "button"; yes.className = "btn btn--small btn--solid"; no.className = "btn btn--small btn--ghost";
+          ys.textContent = T("Mark paid"); ns.textContent = T("Reject"); yes.appendChild(ys); no.appendChild(ns);
+          yes.addEventListener("click", function () { act({ action: "confirm", payment_id: p.id }, T("Marked paid. The customer has been told. ✅")); });
+          twoStep(no, "Reject", "Tap again to confirm", function () { act({ action: "reject", payment_id: p.id }, T("Rejected. The customer has been asked to check it. ✅")); });
+          row.appendChild(yes); row.appendChild(no); li.appendChild(row);
+        }
+        plist.appendChild(li);
+      });
+      dq("[data-ad-markpaid]").hidden = !o.can.mark_paid; dq("[data-ad-mp-ref]").value = "";
       // status moves
       var mv = dq("[data-ad-moves]"), mb = dq("[data-ad-move-btns]"); mb.textContent = ""; mv.hidden = !o.can.status.length;
       o.can.status.forEach(function (to) {
@@ -1621,7 +1688,8 @@
         var extra = h.action === "order.priced" ? " · " + (d.total === 0 ? T("Free") : inr(d.total)) + (d.parts > 1 ? " · " + T("{n} parts").replace("{n}", d.parts) : "")
           : h.action === "order.status" ? " · " + T(ORDER_ST[d.from] || d.from) + " → " + T(ORDER_ST[d.to] || d.to)
           : h.action === "order.part_opened" ? " · " + inr(d.amount) : h.action === "order.created" && d.amount ? " · " + inr(d.amount)
-          : h.action === "order.email" && !d.ok && d.error ? " · " + d.error : "";
+          : h.action === "order.email" && !d.ok && d.error ? " · " + d.error
+          : /^payment\./.test(h.action) ? (d.reference ? " · " + d.reference : "") + (d.amount ? " · " + inr(d.amount) : "") : "";
         var what = h.action === "order.email" ? (d.to === "owner" ? (d.ok ? "Email to you: sent" : "Email to you failed") : (d.ok ? "Email to the customer: sent" : "Email to the customer failed")) : HIST[h.action] || h.action;
         w.textContent = T(what) + extra;
         if (h.action === "order.email" && !d.ok) li.classList.add("ad-h-bad"); li.appendChild(t); li.appendChild(w); hl.appendChild(li);
@@ -1646,7 +1714,7 @@
         if (j.email && !j.email.ok) dnote(T("Saved, but the email to the customer didn’t go out: {e}").replace("{e}", j.email.error || "?"), "err");
         else { dnote(okText, "ok"); sfx("switch"); }
         var card = $(".panel-card", dEl); if (card && card.scrollTo) card.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });   // the message sits at the top
-        if (tab === "orders") load();
+        if (tab !== "users") load();
       });
     }
     if (dEl) {
@@ -1661,10 +1729,13 @@
       });
       dq("[data-ad-next]").addEventListener("click", function () { act({ action: "next_part" }, T("Asked for the next part. ✅")); });
       dq("[data-ad-resend]").addEventListener("click", function () { act({ action: "resend" }, T("Email sent to the customer. ✅")); });
+      twoStep(dq("[data-ad-mp]"), "Mark this part paid", "Tap again to confirm", function () {
+        act({ action: "mark_paid", reference: dq("[data-ad-mp-ref]").value.trim() }, T("Marked paid. The customer has been told. ✅"));
+      });
       dq("[data-ad-save-note]").addEventListener("click", function () { act({ action: "note", note: dq("[data-ad-note]").value }, T("Note saved. ✅")); });
     }
     tbody.addEventListener("click", function (e) {
-      if (tab !== "orders") return;
+      if (tab !== "orders" && tab !== "payments") return;
       var b = e.target.closest("[data-ref]") || e.target.closest("tr"); if (!b) return;
       var r = b.getAttribute("data-ref") || ($("[data-ref]", b) && $("[data-ref]", b).getAttribute("data-ref")); if (r) openOrder(r);
     });

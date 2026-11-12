@@ -82,6 +82,38 @@ export function acceptedMail(lang, { ref, title, origin }) {
   return { subject: fill(t.okS, { ref }) + " — THE AAMIR SHEIKH", ...card(lang, { heading: t.okH, lines: [t.okB], title, ref, button: t.see, href: orderLink(origin, ref) }) };
 }
 
+/* Payment emails (v3.9): the owner confirmed a payment, or could not find it. */
+const P = {
+  en: { gotS: "Payment received for {ref}", gotH: "Payment received", gotB: "I received {amount}. Thank you!", gotAll: "Your order is fully paid.", gotMore: "The next part is due later. You’ll get an email when it is.",
+        noS: "Please check your payment for {ref}", noH: "I couldn’t find this payment", noB: "I couldn’t match the UPI reference {utr} to a payment of {amount}.", noB2: "Please check the number and enter it again, or pay again from your order page." },
+  de: { gotS: "Zahlung für {ref} erhalten", gotH: "Zahlung erhalten", gotB: "Ich habe {amount} erhalten. Danke!", gotAll: "Deine Bestellung ist vollständig bezahlt.", gotMore: "Der nächste Teil ist später fällig. Du bekommst dann eine E-Mail.",
+        noS: "Bitte prüfe deine Zahlung für {ref}", noH: "Ich konnte diese Zahlung nicht finden", noB: "Ich konnte die UPI-Referenz {utr} keiner Zahlung über {amount} zuordnen.", noB2: "Bitte prüfe die Nummer und gib sie erneut ein, oder zahle noch einmal über deine Bestellseite." },
+  fr: { gotS: "Paiement reçu pour {ref}", gotH: "Paiement reçu", gotB: "J’ai bien reçu {amount}. Merci !", gotAll: "Ta commande est entièrement payée.", gotMore: "La partie suivante sera à payer plus tard. Tu recevras un e-mail à ce moment-là.",
+        noS: "Vérifie ton paiement pour {ref}", noH: "Je n’ai pas trouvé ce paiement", noB: "Je n’ai trouvé aucun paiement de {amount} avec la référence UPI {utr}.", noB2: "Vérifie le numéro et saisis-le de nouveau, ou paie à nouveau depuis la page de ta commande." },
+  ja: { gotS: "{ref} のお支払いを確認しました", gotH: "お支払いを確認しました", gotB: "{amount} を受け取りました。ありがとうございます！", gotAll: "ご注文のお支払いはすべて完了しました。", gotMore: "次回のお支払いは後日です。その時にメールでお知らせします。",
+        noS: "{ref} のお支払いをご確認ください", noH: "このお支払いが見つかりませんでした", noB: "UPI参照番号 {utr} で {amount} のお支払いが見つかりませんでした。", noB2: "番号を確認してもう一度入力するか、注文ページからもう一度お支払いください。" },
+  es: { gotS: "Pago recibido para {ref}", gotH: "Pago recibido", gotB: "Recibí {amount}. ¡Gracias!", gotAll: "Tu pedido está pagado por completo.", gotMore: "La siguiente parte se paga más adelante. Te llegará un correo cuando toque.",
+        noS: "Revisa tu pago de {ref}", noH: "No encontré este pago", noB: "No encontré ningún pago de {amount} con la referencia UPI {utr}.", noB2: "Revisa el número y escríbelo de nuevo, o vuelve a pagar desde la página de tu pedido." },
+  ru: { gotS: "Оплата по {ref} получена", gotH: "Оплата получена", gotB: "Я получил {amount}. Спасибо!", gotAll: "Заказ оплачен полностью.", gotMore: "Следующую часть нужно будет оплатить позже. Я пришлю письмо, когда придёт время.",
+        noS: "Проверь оплату по {ref}", noH: "Я не нашёл этот платёж", noB: "Я не нашёл платёж на {amount} с номером UPI {utr}.", noB2: "Проверь номер и введи его снова или оплати ещё раз со страницы заказа." },
+  ar: { gotS: "تم استلام الدفع للطلب {ref}", gotH: "تم استلام الدفع", gotB: "استلمتُ {amount}. شكرًا لك!", gotAll: "تم دفع طلبك بالكامل.", gotMore: "الجزء التالي مستحق لاحقًا. ستصلك رسالة عندما يحين موعده.",
+        noS: "يُرجى التحقق من دفعتك للطلب {ref}", noH: "لم أجد هذه الدفعة", noB: "لم أجد دفعة بقيمة {amount} بمرجع UPI ‏{utr}.", noB2: "يُرجى التحقق من الرقم وإدخاله مرة أخرى، أو الدفع مجددًا من صفحة طلبك." },
+  zh: { gotS: "已收到 {ref} 的付款", gotH: "已收到付款", gotB: "我已收到 {amount}，谢谢！", gotAll: "你的订单已全部付清。", gotMore: "下一笔稍后再付，到时我会发邮件通知你。",
+        noS: "请检查 {ref} 的付款", noH: "我没有找到这笔付款", noB: "我没有找到 UPI 参考号为 {utr}、金额为 {amount} 的付款。", noB2: "请核对号码后重新输入，或在订单页面重新付款。" },
+  ko: { gotS: "{ref} 결제 확인", gotH: "결제를 확인했어요", gotB: "{amount}을(를) 받았어요. 감사해요!", gotAll: "주문 금액이 모두 결제되었어요.", gotMore: "다음 회차는 나중에 결제하면 돼요. 그때 메일을 보내드릴게요.",
+        noS: "{ref} 결제를 확인해 주세요", noH: "이 결제를 찾지 못했어요", noB: "UPI 참조 번호 {utr}로 {amount} 결제를 찾지 못했어요.", noB2: "번호를 확인해 다시 입력하거나, 주문 페이지에서 다시 결제해 주세요." },
+};
+
+export function paidMail(lang, { ref, title, amountMinor, currency, allPaid, origin }) {
+  const t = P[lang] || P.en, s = T[lang] || T.en, amount = money(lang, amountMinor, currency);
+  return { subject: fill(t.gotS, { ref }) + " — THE AAMIR SHEIKH", ...card(lang, { heading: t.gotH, lines: [fill(t.gotB, { amount }), allPaid ? t.gotAll : t.gotMore], title, ref, button: s.see, href: orderLink(origin, ref) }) };
+}
+
+export function rejectedMail(lang, { ref, title, utr, amountMinor, currency, origin }) {
+  const t = P[lang] || P.en, s = T[lang] || T.en, amount = money(lang, amountMinor, currency);
+  return { subject: fill(t.noS, { ref }) + " — THE AAMIR SHEIKH", ...card(lang, { heading: t.noH, lines: [fill(t.noB, { utr, amount }), t.noB2], title, ref, button: s.see, href: orderLink(origin, ref) }) };
+}
+
 /* Sends one customer email. Returns { ok, status, error }; never throws. */
 export async function mailCustomer(env, to, mail) {
   if (!env.EMAIL_API_KEY || !env.MAIL_FROM) return { ok: false, status: 0, error: "email settings missing" };

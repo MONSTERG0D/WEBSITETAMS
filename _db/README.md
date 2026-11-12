@@ -2,7 +2,7 @@
 
 The backend runs on Cloudflare, next to the static site: Pages Functions for the API and a D1 database for the data. This file is the map. It holds no secrets; secrets live only in Cloudflare.
 
-Built so far: the foundation (step 1), sign-in with the account page (step 2), the owner-only admin page (step 3) and services with orders (step 4). UPI payments come in step 5.
+Built so far: the foundation (step 1), sign-in with the account page (step 2), the owner-only admin page (step 3), services with orders (step 4) and UPI payments (step 5).
 
 ## Where things are
 
@@ -17,9 +17,11 @@ Built so far: the foundation (step 1), sign-in with the account page (step 2), t
 | `functions/api/auth/email/` | `start.js` emails a 6-digit code; `verify.js` checks it and signs them in. |
 | `functions/api/auth/logout.js` | `POST /api/auth/logout` — ends the session. |
 | `functions/api/account/orders.js` | `GET /api/account/orders` — the signed-in person's own orders. |
-| `functions/api/account/order.js` | `GET /api/account/order?ref=` — one of their orders. `POST` with `action: "cancel"` cancels it while nothing is paid. |
+| `functions/api/account/order.js` | `GET /api/account/order?ref=` — one of their orders, with how to pay what is due. `POST` with `action: "cancel"` cancels it while nothing is paid; `action: "paid"` sends the 12-digit UPI reference. |
 | `functions/api/orders.js` | `POST /api/orders` — place an order, from the Services page (one service) or from the order form (`source: "form"`). |
-| `functions/api/admin/order.js` | `GET /api/admin/order?ref=` — one order for the owner. `POST` actions: `price` (one part or several), `next_part`, `status`, `note`. |
+| `functions/api/admin/order.js` | `GET /api/admin/order?ref=` — one order for the owner. `POST` actions: `price` (one part or several), `next_part`, `resend`, `status`, `note`, and for payments `confirm` (Mark paid), `reject`, `mark_paid` (paid some other way). |
+| `functions/_lib/payments.js` | UPI settings, the UPI payment link, the 12-digit reference check, and `settleStatements()`, which marks a part paid and moves the order on. |
+| `assets/js/qr.js` | The QR code maker for the pay box, written for this site (no library). |
 | `functions/_lib/catalog.js` | The price list and pricing rules the server charges. **Generated** by `_build/build.py` from `_build/catalog.py` and `_build/pricing_core.js` — do not edit it by hand. |
 | `functions/_lib/orders.js`, `ordermail.js` | Order rules (references, limits, parts) and the customer emails in nine languages. |
 | `functions/_lib/` | Shared helpers. Not routes. `auth.js` holds accounts, sessions, the sign-in history and the rate limits. |
@@ -106,7 +108,17 @@ Check: open `/api/health`. A healthy answer has `"ok": true`, `"db": "ok"`, `"ta
 - **Limits per account:** 6 orders an hour, 20 a day, 10 open requests at once.
 - **Emails:** the customer gets "request received" or "ready to pay" in their language; the owner gets every new order (with a link that opens it in the admin page) and every customer cancel. The WhatsApp and Gmail buttons on the order form work exactly as before.
 - Every change is written to `audit_log` (`order.created`, `order.priced`, `order.part_opened`, `order.status`, `order.note`, `order.cancelled`).
-- The pay link opens the order on the account page (`/account.html?order=TAS-XXXXXX`). The UPI button and QR code arrive in step 5; until then it says payment opens soon.
+- The pay link opens the order on the account page (`/account.html?order=TAS-XXXXXX`), where the customer pays (step 5).
+
+## UPI payments (step 5)
+
+- **Where the money goes:** the Cloudflare settings `UPI_ID` (main), `UPI_ID_BACKUP` (others, comma-separated) and `UPI_PAYEE_NAME`. They are not in this repo. Until `UPI_ID` and `UPI_PAYEE_NAME` are set, the pay box says UPI payment is not switched on yet. `/api/health` shows `"payments": { "upi": true }` once they are.
+- **Paying:** on a phone the pay box has a "Pay with a UPI app" button (the standard `upi://pay` link, with the amount, the payee name and the order number as the note) and direct links for Google Pay, PhonePe and Paytm. On a computer it shows a QR code of the same link. The UPI ID can be copied, and "If the payment fails" lists all the UPI IDs for paying by hand. Personal UPI IDs are sometimes blocked by apps when opened from a website; the QR code and paying by hand still work. A business UPI ID avoids that: put it in `UPI_ID`.
+- **After paying:** the customer types the 12-digit UPI reference (UTR) from their receipt. It is stored as a `payments` row with status `submitted` and the order shows "Waiting for check". You get an email. One reference can wait per part; a reference that is waiting or confirmed cannot be used again; 5 tries per order a day.
+- **Mark paid:** when the money is in your bank, open the order in Admin and press Mark paid. The part becomes `paid`, the customer gets a receipt in their language, and the order moves to `paid` (all parts paid) or `in_progress` (an advance paid; ask for the next part when the milestone is reached).
+- **Reject:** the payment becomes `rejected`, the part can be paid again, and the customer gets an email asking them to check the reference.
+- **Paid some other way** (cash, bank transfer, a reference the customer forgot to send): "Mark this part paid", with an optional UPI reference. It is stored with provider `manual` when there is no reference.
+- **Razorpay later:** a gateway payment is another `payments` row (`provider = 'razorpay'`, `provider_order_id` from Razorpay). Its signed webhook would call the same `settleStatements()` that Mark paid uses, so no table and no page changes.
 
 ## Changing the schema later
 
@@ -133,9 +145,11 @@ Entered by hand in Cloudflare (Settings → Variables and Secrets), for Producti
 | `NOTIFY_EMAIL` | text | step 3 | Optional. Where sign-up and order notices go. Leave it out to use `ak4418561@gmail.com`. |
 | `MAIL_FROM` | text | step 2 | The sender, for example `THE AAMIR SHEIKH <login@theaamirsheikh.com>`. The domain must be verified at the email service. |
 | `ADMIN_EMAIL` | variable | step 3 | The one address allowed into the admin page. |
-| `UPI_ID`, `UPI_PAYEE_NAME` | variable | step 5 | Where UPI payments go. |
+| `UPI_ID` | text | step 5 | The main UPI ID, used by the pay button and the QR code. |
+| `UPI_ID_BACKUP` | text | step 5 | Optional. Other UPI IDs for the same account, comma-separated, shown under "If the payment fails". |
+| `UPI_PAYEE_NAME` | text | step 5 | The name shown in the UPI app. |
 
-Step 4 needs no new settings. The names for step 5 are the plan; that step confirms its own.
+Step 4 needed no new settings. The UPI settings are text, not secrets (every payer sees them), but they live in Cloudflare so the public repo does not carry them.
 
 Google sign-in switches on when `SESSION_SECRET` and both Google values are present. Email-code sign-in switches on when `SESSION_SECRET`, both Turnstile values, `EMAIL_API_KEY` and `MAIL_FROM` are present. Until then the account page says sign-in is not switched on yet, and the rest of the site is unaffected.
 
