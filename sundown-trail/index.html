@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1d1610">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Sundown Trail — THE AAMIR SHEIKH</title>
+  <meta name="description" content="Sundown Trail, a western you can play in your browser: ride Juniper across Ashwater County, 1899, hunt, take bounties and win back the Rourke ranch. Made by THE AAMIR SHEIKH.">
+  <link rel="canonical" href="https://theaamirsheikh.com/sundown-trail/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Sundown Trail — THE AAMIR SHEIKH">
+  <meta property="og:description" content="A western you can play in your browser. Ride, hunt, take bounties and win back the ranch.">
+  <meta property="og:url" content="https://theaamirsheikh.com/sundown-trail/">
+  <meta property="og:image" content="https://theaamirsheikh.com/assets/img/sundown/st-1.webp">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rye&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <canvas id="game-canvas" aria-label="Sundown Trail game view"></canvas>
+  <div id="ui-root"></div>
+  <div id="touch-root"></div>
+  <div id="loading" class="sd-loading" role="status">
+    <h1 class="sd-loading-title">Sundown Trail</h1>
+    <div class="sd-loading-bar"><span class="sd-loading-fill"></span></div>
+    <p class="sd-loading-tip">Starting</p>
+  </div>
+  <noscript>Sundown Trail needs JavaScript.</noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

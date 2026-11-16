@@ -17,6 +17,12 @@
   Cache-Control: public, max-age=86400
 /assets/js/*
   Cache-Control: public, max-age=86400
+/sundown-trail/assets/*
+  Cache-Control: public, max-age=2592000
+/sundown-trail/src/*
+  Cache-Control: public, max-age=0, must-revalidate
+/sundown-trail/*.css
+  Cache-Control: public, max-age=0, must-revalidate
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

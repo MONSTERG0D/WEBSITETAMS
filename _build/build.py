@@ -335,6 +335,7 @@ def pause_menu(current, p):
                                                      for c in CHAPTERS if c[0] in ABOUT) + "</ul>"
         items.append(f'<li><a href="{p}{f}"{nav_current(f, current) if f != "purpose.html" else (" aria-current=true" if primary_of(current) == f else "")}><span class="num">0{i + 1}</span>{label}</a>{sub}</li>')
     items.append(f'<li><a href="{p}90-day-progress/"><span class="num">↗</span>90 Day Progress</a></li>')
+    items.append(f'<li><a href="{p}sundown-trail/"><span class="num">▶</span>Play Sundown Trail</a></li>')   # v3.12
     items.append(f'<li><a href="{p}play.html"{" aria-current=page" if current == "play.html" else ""}><span class="num">✦</span>Lighthouse game</a></li>')
     items.append(f'<li><a href="{p}account.html" data-acct-link{" aria-current=page" if current == "account.html" else ""}><span class="num">☺</span><span class="acct-t">Sign in</span></a></li>')
     items.append('<li><button type="button" data-panel-open><span class="num">⚙</span>Settings</button></li>')
@@ -384,7 +385,7 @@ def footer(p):
         </div>
       </div>
       <div class="col"><p class="label">Chapters</p><ul class="mt-s foot-list">{pages}</ul></div>
-      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}play.html">{ico("lighthouse")} Lighthouse game</a></li><li><a href="{p}account.html" data-acct-link>{ico("user-round")} <span class="acct-t">Sign in</span></a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><a href="{p}privacy.html">{ico("shield-check")} Privacy</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
+      <div class="col"><p class="label">Elsewhere</p><ul class="mt-s foot-list"><li><a href="{GITHUB}" rel="me noopener" target="_blank">{ico("code-xml")} GitHub</a></li>{"".join(f'<li><a href="{u}" rel="me noopener" target="_blank">{ico("instagram")} @{h}</a></li>' for h, u in INSTAGRAM)}<li><a href="{p}90-day-progress/">{ico("trophy")} 90 Day Progress</a></li><li><a href="{p}sundown-trail/">{ico("gamepad-2")} Play Sundown Trail</a></li><li><a href="{p}play.html">{ico("lighthouse")} Lighthouse game</a></li><li><a href="{p}account.html" data-acct-link>{ico("user-round")} <span class="acct-t">Sign in</span></a></li><li><a href="{p}order.html#feedback">{ico("star")} Leave feedback</a></li><li><a href="{p}credits.html">{ico("award")} Credits</a></li><li><a href="{p}privacy.html">{ico("shield-check")} Privacy</a></li><li><button type="button" data-panel-open class="foot-btn">{ico("accessibility")} Accessibility</button></li></ul></div>
     </div>
     <div class="foot-base label">
       <span>© <span data-year>2026</span> {BRAND}</span>
@@ -526,11 +527,11 @@ def build_home():
         vids += f'<video muted playsinline loop preload="none" data-src="{M}{s}-loop.mp4" poster="{M}{s}.webp" data-ori="{c[4]}" data-title="{esc(c[1])}" data-kind="{esc(c[2])}" {play_attrs(s).replace("data-title=", "data-ptitle=")} aria-hidden="true"></video>'
         ticks += f'<button type="button" aria-label="Show {esc(c[1])}"></button>'
     chapters = "".join(f'<li class="rv"><a href="{f}"><span class="num">{r}</span><span class="t">{ico(icon)} {t}</span><span class="d">{d}</span></a></li>' for f, l, r, t, d, icon in CHAPTERS)
-    stats = [("film", "14", "films cut"), ("box", "5", "Blender studies"), ("bot", "3", "robots in progress"), ("gamepad-2", "1", "western in dev")]
+    stats = [("film", "14", "films cut"), ("box", "5", "Blender studies"), ("bot", "3", "robots in progress"), ("gamepad-2", "1", "western you can play")]
     stat_html = "".join(f'<li class="rv"><span class="st-i">{ico(i)}</span><b data-count="{n}">{n}</b><span class="label">{t}</span></li>' for i, n, t in stats)
     # v3.11: who, what and where in one line, and three works that show it, right under the hero
     feat = [("projects.html#reel", f"{M}meant-to-be-felt.webp", 1280, 720, "film", "Motion Reel 2026", "Motion · edits · grades", "14 films"),
-            ("projects.html#sundown-trail", f"{SD}st-1-sm.webp", 640, 400, "gamepad-2", "Sundown Trail", "Game · UI", "In development"),
+            ("projects.html#sundown-trail", f"{SD}st-1-sm.webp", 640, 400, "gamepad-2", "Sundown Trail", "Game · UI", "Playable in the browser"),
             ("projects.html#echo-balancer", "assets/img/art-echo.webp", 1200, 900, "bot", "Echo Balancer", "Robotics · eYRC", "In progress")]
     feat_html = "".join(f'''<li class="rv{" rv-d" + str(k) if k else ""}"><a class="feat-c" href="{h}"><span class="feat-m"><img src="{img}" alt="" loading="lazy" decoding="async" width="{w}" height="{hh}"></span>
       <span class="feat-t"><span class="label">{ico(ic)} {kind}</span><b>{t}</b><span class="feat-s">{st}</span></span><span class="feat-go" aria-hidden="true">{ico("arrow-right")}</span></a></li>'''
@@ -556,7 +557,7 @@ def build_home():
   <div class="tiles">
     <a class="tile tile--wide rv" href="projects.html#reel">{video_tile_media("meant-to-be-felt")}<div class="tile-cap"><h3>{ico("film")} Motion Reel 2026</h3><span class="label">14 films</span></div></a>
     <a class="tile rv" href="projects.html#blender"><div class="tile-media wipe"><img src="{B}blender-2.webp" alt="Blender render of a pink donut beside a mug" loading="lazy" decoding="async" width="1600" height="900"></div><div class="tile-cap"><h3>{ico("box")} Blender Studies</h3><span class="label">3D</span></div></a>
-    <a class="tile rv rv-d1" href="projects.html#sundown-trail"><div class="tile-media wipe"><img src="{SD}st-1-sm.webp" srcset="{SD}st-1-sm.webp 640w, {SD}st-1.webp 1280w" sizes="(max-width: 520px) 100vw, 33vw" alt="Sundown Trail: the rider in tall grass at golden hour" loading="lazy" decoding="async" width="1280" height="800"></div><div class="tile-cap"><h3>{ico("gamepad-2")} Sundown Trail</h3><span class="label badge-live">In dev</span></div></a>
+    <a class="tile rv rv-d1" href="projects.html#sundown-trail"><div class="tile-media wipe"><img src="{SD}st-1-sm.webp" srcset="{SD}st-1-sm.webp 640w, {SD}st-1.webp 1280w" sizes="(max-width: 520px) 100vw, 33vw" alt="Sundown Trail: the rider in tall grass at golden hour" loading="lazy" decoding="async" width="1280" height="800"></div><div class="tile-cap"><h3>{ico("gamepad-2")} Sundown Trail</h3><span class="label badge-live">Playable</span></div></a>
     <a class="tile rv" href="projects.html#echo-balancer">{art_media("echo", "art-night")}<div class="tile-cap"><h3>{ico("bot")} Echo Balancer</h3><span class="label badge-live">eYRC</span></div></a>
     <a class="tile rv rv-d1" href="projects.html#robotic-arm">{art_media("arm", "art-day")}<div class="tile-cap"><h3>{ico("cpu")} Arm Control Suite</h3><span class="label">Robotics</span></div></a>
     <a class="tile rv" href="projects.html#smart-bin">{art_media("bin", "art-night")}<div class="tile-cap"><h3>{ico("trees")} Smart Bin</h3><span class="label">SIH 2026</span></div></a>
@@ -761,8 +762,9 @@ def build_work():
         '<img src="assets/img/sundown-trail-pause.webp" alt="Sundown Trail’s paper-journal pause menu: Resume, Save game, Load game, Settings, Quit to title" loading="lazy" decoding="async" width="780" height="1040">', "",
         "Sundown Trail", "gamepad-2", "A western, built one system at a time",
         "RDR2 made me want to build a world, not a level. Press Esc — this site’s menu is modelled on the game’s.",
-        [("flame", "Status", '<span class="badge-live">In development</span>'), ("layers", "Focus", "Game design · UI · Blender environments"), ("globe", "Platform", "Browser → Android &amp; iOS"),
-         ("gamepad-2", "Latest", "Part 5: horse riding — four gaits, mount and dismount, whistle, bond")], [], False)
+        [("flame", "Status", '<span class="badge-live">Playable in the browser</span>'), ("layers", "Focus", "Game design · UI · Blender environments"), ("globe", "Platform", "Browser now · Android &amp; iOS app next"),
+         ("gamepad-2", "Latest", "Parts 0–16: open world, horse, gunfights, towns, hunting, ranch, story missions, photo mode")],
+        [f'<a class="btn btn--solid" href="sundown-trail/">{ico("gamepad-2")} Play in your browser</a>'], False)   # v3.12: the game itself, at /sundown-trail/
     rest = mission("echo-balancer", "robotics software", "04", art("echo"), "art-night", "Echo Balancer", "bot", "e-Yantra Robotics Competition 2026–27",
         "Keep an unstable robot upright. PID first, then LQR — in CoppeliaSim.",
         [("flame", "Status", '<span class="badge-live">In progress</span>'), ("code-xml", "Stack", "Python · CoppeliaSim"), ("award", "Competition", "eYRC · IIT Bombay")], [], True)
@@ -782,7 +784,7 @@ def build_work():
 
     index_rows = [
         ("01", "Motion Reel 2026", "film", "Motion · edits · grades", "2026", "#reel", f"{M}money-follows.webp"),
-        ("02", "Sundown Trail", "gamepad-2", "Game · UI", "In dev", "#sundown-trail", "assets/img/sundown-trail-pause.webp"),
+        ("02", "Sundown Trail", "gamepad-2", "Game · UI", "Playable", "#sundown-trail", "assets/img/sundown-trail-pause.webp"),
         ("03", "Blender Studies", "box", "3D · lighting", "2026", "#blender", f"{B}blender-2.webp"),
         ("04", "Echo Balancer", "bot", "Robotics · eYRC", "2026", "#echo-balancer", "assets/img/art-echo.webp"),
         ("05", "Arm Control Suite", "cpu", "Robotics · software", "In dev", "#robotic-arm", "assets/img/art-arm.webp"),
@@ -1517,7 +1519,7 @@ def build_404():
     build_game("play.html", "")
 
 def write_sitemap():
-    pages = ["", "purpose.html", "struggles.html", "skills.html", "projects.html", "inspirations.html", "services.html", "order.html", "credits.html", "privacy.html", "play.html", "90-day-progress/"] + [f"skills/{s[0]}.html" for s in SKILLS]
+    pages = ["", "purpose.html", "struggles.html", "skills.html", "projects.html", "inspirations.html", "services.html", "order.html", "credits.html", "privacy.html", "play.html", "90-day-progress/", "sundown-trail/"] + [f"skills/{s[0]}.html" for s in SKILLS]
     urls = "".join(f"<url><loc>{SITE}/{p}</loc></url>" for p in pages)
     open(os.path.join(ROOT, "sitemap.xml"), "w").write(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
 
@@ -1534,8 +1536,8 @@ def write_i18n():
     if miss2: print("WARNING missing zh/ko:", miss2[:10])
     for i, code in enumerate(("zh", "ko")):
         data[code] = {k: v[i] for k, v in i18n_cjk.C.items()}
-    import i18n_p0, i18n_acct, i18n_admin, i18n_shop, i18n_privacy, i18n_polish   # v3.4, account/sign-in, admin, shop (v3.8), privacy (v3.10) and polish (v3.11) strings, all 8 languages in one row
-    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P + i18n_shop.P + i18n_privacy.P + i18n_polish.P:
+    import i18n_p0, i18n_acct, i18n_admin, i18n_shop, i18n_privacy, i18n_polish, i18n_game   # v3.4, account/sign-in, admin, shop (v3.8), privacy (v3.10), polish (v3.11) and the playable game (v3.12), all 8 languages in one row
+    for row in i18n_p0.P + i18n_acct.P + i18n_admin.P + i18n_shop.P + i18n_privacy.P + i18n_polish.P + i18n_game.P:
         assert len(row) == 9, row[0]
         for code, val in zip(("de", "fr", "ja", "es", "ru", "ar", "zh", "ko"), row[1:]):
             data[code][row[0]] = val
