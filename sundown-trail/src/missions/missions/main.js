@@ -29,7 +29,7 @@ export const MAIN_MISSIONS = [
         ];
       } },
       { id: 'ride1', type: 'ride', text: 'Ride west toward Copperbell', at: at('road:fortGranger:0.8'), radius: 30, checkpoint: true,
-        onStart: (ctx) => { hint(ctx, 'move', 'WASD steers Juniper; tap Shift to spur her to a faster gait, hold it to keep it.', 'Left thumb steers; tap Spur to go faster.', 'Left stick steers; click L3 to spur.'); ctx.stage.after(14, () => hint(ctx, 'map', 'M opens the map; the dashed line on the minimap follows the road to your waypoint.', 'Tap Map for the map; the dashed line follows the road.')); } },
+        onStart: (ctx) => { hint(ctx, 'move', 'WASD steers Juniper; tap Shift to spur her to a faster gait, hold it to keep it.', 'Left thumb steers; hold Sprint to go faster, Get off to dismount.', 'Left stick steers; click L3 to spur.'); ctx.stage.after(14, () => hint(ctx, 'map', 'M opens the map; the dashed line on the minimap follows the road to your waypoint.', 'Tap Map for the map; the dashed line follows the road.')); } },
       { id: 'ride2', type: 'ride', text: 'Take the ranch road to the Rourke place', at: at('ranchYard'), radius: 22, checkpoint: true, waypointLabel: 'Rourke Ranch' },
       when('dismount', 'Climb down from the saddle', (ctx) => ctx.game.player.state === 'onFoot', { onStart: (ctx) => hint(ctx, 'dismount', 'Press E to dismount.', 'Tap Use to dismount.', 'Press X to dismount.') }),
       { id: 'mae', type: 'talk', text: 'Find out who\'s living in the ruins', npc: MAE, label: 'Talk to the woman by the chimney', tree: 'mae_intro', store: 'maeChoice', waypoint: (ctx) => ctx.game.get('npcs')?.byId?.get('companion:mae')?.position || ctx.stage.place('ranch') },
