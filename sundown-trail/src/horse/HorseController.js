@@ -13,7 +13,7 @@ import { TUNING as GAITS } from './anim/Gaits.js';
 export const TUNING = {
   accel: [2.4, 3.2, 3.6, 3.4], decel: 4.5, brake: 9, backSpeed: 1.2,
   turnRate: [1.9, 1.5, 1.05, 0.8], turnInPlace: 1.6, tightTurnBonus: 1.25,
-  gaitHoldDecay: 2.6, staminaGallop: 10, staminaCanter: 1.2, staminaRegen: [7, 3.5], exhausted: 2,
+  gaitHoldDecay: 2.6, touchSpurStep: 0.45, staminaGallop: 10, staminaCanter: 1.2, staminaRegen: [7, 3.5], exhausted: 2,
   slopeUphill: 0.7, slopeMin: 0.5, waterSlow: 0.55, waterDeep: 1.3, roadBonus: 1.06,
   jumpHeight: 1.35, jumpMinSpeed: 2.5, radius: 0.55, height: 1.9, noseProbe: 1.35, hitStumbleSpeed: 4.5,
   call: { range: 250, stopAt: 3.5, gallopAt: 35, canterAt: 15, trotAt: 6, avoid: 4.5, spawnBehind: 70 },
@@ -96,6 +96,11 @@ export class HorseController {
       } else this.level++;
       this.holdT = 0;
     }
+    // touch: holding the Sprint button keeps stepping up a gait (no fast tapping on a phone)
+    if (canDrive && input.touchDown?.has('sprint') && this.level < 3 && h.stamina >= TUNING.exhausted) {
+      this._spurT = (this._spurT || 0) + dt;
+      if (this._spurT > TUNING.touchSpurStep) { this._spurT = 0; this.level++; }
+    } else this._spurT = 0;
     if (canDrive && input.isDown('sprint')) this.holdT = 0; else this.holdT += dt;
     if (this.holdT > TUNING.gaitHoldDecay && this.level > 0) { this.level--; this.holdT = 0; }
     if (h.stamina < TUNING.exhausted && this.level === 3) this.level = 2;
