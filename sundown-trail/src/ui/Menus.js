@@ -19,8 +19,7 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls)
 const PAGES = [['graphics', 'Graphics'], ['controls', 'Controls'], ['gamepad', 'Gamepad'], ['audio', 'Audio'], ['access', 'Accessibility'], ['touch', 'Touch']];
 const CREDITS = [
   ['Sundown Trail', 'An original western, made part by part'],
-  ['Design and direction', 'Aamir'],
-  ['Code, models, animation, effects, sound and music', 'Generated in code with Claude (Anthropic)'],
+  ['Design, direction, code, models, animation, effects, sound and music', 'Aamir'],
   ['Built with', 'three.js · the Web Audio API · Blender (baked ground textures)'],
   ['Typeface', 'Rye by Nicole Fally (SIL Open Font License)'],
   ['Thanks', 'To everyone who ever rode off into a sunset'],
