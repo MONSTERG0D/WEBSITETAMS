@@ -28,7 +28,7 @@ export const TOUCH_BUTTONS = [
   { action: 'aim', label: 'Aim', slot: 'r3', when: (g) => !!g.get('combat') },
   { action: 'reload', label: 'Reload', slot: 'r4', when: (g) => !!g.get('combat'), labelFn: (g) => (g.get('combat')?.mode === 'melee' ? 'Shove' : 'Reload') },
   { action: 'focus', label: 'Focus', slot: 'r5', when: (g) => !!g.get('focus') && !!g.sys('combat').isAiming },
-  { action: 'sprint', label: 'Spur', slot: 'r6', when: (g) => g.player?.state === 'mounted' },
+  { action: 'sprint', label: 'Sprint', slot: 'r6', when: (g) => g.player?.state === 'mounted' },
   { action: 'weaponWheel', label: 'Guns', slot: 'r7', when: (g) => !!g.get('combat') },
   { action: 'interact', label: 'Use', slot: 'ctx', context: true },
   { action: 'map', label: 'Map', slot: 't0', when: (g) => !!g.get('map') },
@@ -131,13 +131,21 @@ export class Input {
   setTouchVisible(visible) { this._touchWanted = !!visible; this._updateTouchVisibility(); }
   setContextLabel(text) {
     this._contextLabel = text || null;
+    this._applyContextButton();
+  }
+  /** The Use button shows a nearby interaction, or "Get off" while riding (touch has no E key to dismount). */
+  _applyContextButton() {
     const b = this.touchButtons?.get('interact');
-    if (b) { b.el.textContent = this._contextLabel || b.def.label; b.el.hidden = !this._contextLabel; }
+    if (!b) return;
+    let label = this._contextLabel;
+    if (!label) { try { const h = this.game.sys?.('horses')?.playerHorse; if (this.game.player?.state === 'mounted' && h?.rider === this.game.player && h.riderReady) label = 'Get off'; } catch { /* no horses system */ } }
+    if (b.el.textContent !== (label || b.def.label)) b.el.textContent = label || b.def.label;
+    b.el.hidden = !label;
   }
   refreshTouchButtons() {
     if (!this.touchButtons || this.touchRoot.hidden) return;
     for (const { el, def } of this.touchButtons.values()) {
-      if (def.context) continue;
+      if (def.context) { this._applyContextButton(); continue; }
       let show = true;
       try { show = !def.when || def.when(this.game); } catch { show = false; }
       el.hidden = !show;
